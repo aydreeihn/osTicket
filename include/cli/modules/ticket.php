@@ -7,13 +7,13 @@ class TicketManager extends Module {
         'action' => array(
             'help' => 'Action to be performed',
             'options' => array(
-                'import' => 'Import tickets from CSV file',
-                'export' => 'Export tickets from the system to CSV',
+                'import' => 'Import tickets from YAML file',
+                'export' => 'Export tickets from the system to CSV or YAML',
                 'list' => 'List tickets based on search criteria',
             ),
         ),
     );
-	
+
 
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
@@ -55,7 +55,7 @@ class TicketManager extends Module {
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
-          //parse out data for specific tables
+          //processing for tickets
           foreach ($data as $D)
           {
             //lookup related fields
@@ -103,29 +103,6 @@ class TicketManager extends Module {
             $D['priority'] = $priorityId;
             //var_dump('priority id is ' . $D['priority']);
 
-            //object_id
-            $object_id = Ticket::getIdByNumber($D['number']);
-
-            //pull out individual form ids
-            $form_entry = $D['form_entry'];
-            foreach ($form_entry as $T)
-            {
-              $form_id = $T['form_id'];
-              $form_entry_vals = $T['form_entry_values'];
-            }
-
-            //pull out individual form entry values
-            foreach ($form_entry_vals as $V)
-            {
-              //var_dump('field id is ' . $V['field_id'] . ' val is ' . $V['value']);
-              $field_id = $V['field_id'];
-              $value = $V['value'];
-
-            }
-
-            //form entry id
-            $form_entry_id = self::getIdByCombo($form_id, $object_id);
-
             //ticket table
             //for any related id's, look them up from imported data
             $ticket_import[] = array('number' => $D['number'], 'user_id' => $D['user_id'],
@@ -138,26 +115,6 @@ class TicketManager extends Module {
             'est_duedate' => $D['est_duedate'], 'reopened' => $D['reopened'], 'closed' => $D['closed'],
             'lastupdate' => $D['lastupdate']
             );
-
-            //form_entry table
-            $form_entry_import[] = array('form_id' => $form_id,
-            'object_id' => $object_id, 'object_type' => 'T'
-            );
-
-            //form_entry_values
-            $form_entry_values_import[] = array('entry_id' => $form_entry_id,
-            'field_id' => $field_id, 'value' => $value
-            );
-
-
-            //ticket table
-            //for any related id's, look them up from imported data.
-            // $ticket_import[] = array('number' => $D['number'], 'userId' => $D['user_id'],
-            // 'statusId' => $D['status_id'],'deptId'=> $D['dept_id'],
-            // 'slaId'=> $D['sla_id'], 'topicId'=> $D['topic_id'],
-            // 'staffId'=> $D['staff_id'], 'ip' => $D['ip_address'], 'source' => $D['source'],
-            // 'time' => $D['est_duedate'], 'priorityId' => $D['priority']);
-
           }
 
           //import tickets
@@ -171,6 +128,25 @@ class TicketManager extends Module {
           //     $errors = array();
           // }
 
+          //processing for form entries
+          foreach ($data as $D)
+          {
+            $form_entry = $D['form_entry'];
+            foreach ($form_entry as $T)
+            {
+              $form_id = $T['form_id'];
+            }
+
+            //object_id
+            $object_id = Ticket::getIdByNumber($D['number']);
+
+            //form_entry table
+            $form_entry_import[] = array('form_id' => $form_id,
+            'object_id' => $object_id, 'object_type' => 'T'
+            );
+
+          }
+
           //import form_entries
           // $errors = array();
           // foreach ($form_entry_import as $o) {
@@ -181,15 +157,70 @@ class TicketManager extends Module {
           //     $errors = array();
           // }
 
-          //import form_entry_values
-          $errors = array();
-          foreach ($form_entry_values_import as $o) {
-              if ('self::form_entry_val_create' && is_callable('self::form_entry_val_create'))
-                  @call_user_func_array('self::form_entry_val_create', array($o, &$errors, true));
-              // TODO: Add a warning to the success page for errors
-              //       found here
-              $errors = array();
+          //processing for form entry values
+          foreach ($data as $D)
+          {
+             // //pull out individual form ids
+             $form_entry = $D['form_entry'];
+             foreach ($form_entry as $T)
+             {
+               //var_dump('form id is ' . $T['form_id']);
+
+               if($T['form_id'] != null)
+               {
+                 $form_id = $T['form_id'];
+                 //object_id only needed for tickets that have form entries
+                 $object_id = Ticket::getIdByNumber($D['number']);
+               }
+
+               $form_entry_vals = $T['form_entry_values'];
+             }
+
+
+             //pull out individual form entry values
+             foreach ($form_entry_vals as $V)
+             {
+               //var_dump('field id is ' . $V['field_id'] . ' val is ' . $V['value']);
+
+               if($V['field_id'] != null)
+               {
+                 //var_dump('its not null');
+                 $field_id[] = $V['field_id'];
+                 //get the val as well. it may be null
+                 $value[] = $V['value'];
+               }
+             }
+
+             //form entry id
+             $form_entry_id[] = self::getIdByCombo($form_id, $object_id);
+
+
+            //form_entry_values
+            // $form_entry_values_import[] = array('entry_id' => $form_entry_id,
+            // 'field_id' => $field_id, 'value' => $value
+            // );
+
+            //form_entry_values
+            $form_entry_values_import[] = array('entry_id' => array($form_entry_id),
+            'field_id' => array($field_id), 'value' => array($value)
+            );
+
+
           }
+          // var_dump('count field id ' . count($field_id));
+          // var_dump('count value ' . count($value));
+          //var_dump('count form entry id ' . count($form_entry_id));
+          var_dump('count import is ' . var_dump(count($form_entry_values_import)));
+
+          //import form_entry_values
+          // $errors = array();
+          // foreach ($form_entry_values_import as $o) {
+          //     if ('self::form_entry_val_create' && is_callable('self::form_entry_val_create'))
+          //         @call_user_func_array('self::form_entry_val_create', array($o, &$errors, true));
+          //     // TODO: Add a warning to the success page for errors
+          //     //       found here
+          //     $errors = array();
+          // }
 
             break;
 
@@ -334,18 +365,19 @@ class TicketManager extends Module {
     }
 
     //adriane
-    // static function create2($vars=array())
-    // {
-    //   $ticket = new static($vars);
-    //   //$ticket->created = SqlFunction::NOW();
-    //   $ticket->created = new SqlFunction('NOW');
-    //   //return the ticket id
-    //   //adriane
-    //   return $ticket;
-    //
-    // }
+    static function create_ticket($vars=array())
+    {
+      $ticket = new Ticket($vars);
+
+      $ticket->created = new SqlFunction('NOW');
+
+      //return the ticket id
+      return $ticket;
+
+    }
 
     static function form_entry_create($vars, &$error=false, $fetch=false) {
+        var_dump('form');
         //see if form entry exists
         if ($fetch && ($FeId=self::getIdByCombo($vars['form_id'], $vars['object_id'])) || $vars['form_id']  == null)
         {
@@ -354,7 +386,7 @@ class TicketManager extends Module {
         }
         else
         {
-          var_dump('new');
+          var_dump('new + form id is ' . $vars['form_id']);
           $Fe = DynamicFormEntry::create($vars);
           $Fe->save();
           return $Fe;
@@ -366,32 +398,30 @@ class TicketManager extends Module {
       }
 
       static function form_entry_val_create($vars, &$error=false, $fetch=false) {
-        $FevVal = self::getValIdByCombo($vars['entry_id'], $vars['field_id'], $vars['value']);
-        var_dump('fevval is ' . $FevVal . ' and ' . $vars['entry_id'] . ' ' .  $vars['field_id']);
-        if($FevVal == '')
-        {
-          var_dump('its null');
-        }
-        elseif($FevVal == 0)
-        {
-          var_dump('its 0');
-        }
-        else {
-          var_dump('its full');
-        }
+        // if ($vars['entry_id'] != null)
+        // {
+        //   $FevVal = self::getValIdByCombo($vars['entry_id'], $vars['field_id'], $vars['value']);
+        //   var_dump('fevval is ' . $FevVal . ' and ' . $vars['entry_id'] . ' ' .  $vars['field_id']);
+        //
+        // }
+
           //see if form entry val exists
-          // if ($fetch && ($FevVal = self::getValIdByCombo($vars['entry_id'], $vars['field_id'], $vars['value'])) || $FevVal == '' || $vars['field_id']  == null)
-          // {
-          //   var_dump('match');
-          //   return DynamicFormEntryAnswer::lookup($FevVal);
-          // }
-          // else
-          // {
-          //   var_dump('new ' . $vars['entry_id'] . ' ' .  $vars['field_id']);
-          //   // $Fev = DynamicFormEntryAnswer::create($vars);
-          //   // $Fev->save();
-          //   return $Fev;
-          // }
+          if ($vars['entry_id'] != null)
+          {
+            if ($fetch && ($FevVal = self::getValIdByCombo($vars['entry_id'], $vars['field_id'])) && $FevVal != '')
+            {
+              var_dump('match');
+              return DynamicFormEntryAnswer::lookup($FevVal);
+            }
+            else
+            {
+              var_dump('new ' . $vars['entry_id'] . ' ' .  $vars['field_id']);
+              // $Fev = DynamicFormEntryAnswer::create($vars);
+              // $Fev->save();
+              return $Fev;
+            }
+          }
+
 
           //var_dump('youre passing in ' . $vars['entry_id'] . ', ' . $vars['field_id'] . ', and ' .  $vars['value']);
           //var_dump('entry id is ' . self::getIdByCombo($vars['entry_id'], $vars['field_id']));
@@ -400,6 +430,7 @@ class TicketManager extends Module {
 
     //adriane
     static function ticket_create($vars, &$errors=array(), $fetch=false) {
+      var_dump('ticket');
         //see if ticket exists
         if ($fetch && ($ticketId=Ticket::getIdByNumber($vars['number'])))
         {
@@ -411,8 +442,7 @@ class TicketManager extends Module {
         {
           var_dump('new ');
 
-          $ticket = new Ticket();
-          $ticket = Ticket::create2($vars);
+          $ticket = self::create_ticket($vars);
 
           var_dump('error count 2 is ' . count($errors));
 
