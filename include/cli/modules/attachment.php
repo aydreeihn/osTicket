@@ -54,7 +54,7 @@ class AttachmentManager extends Module {
             $ticket_id = Ticket::getIdByNumber($D['ticket_number']);
 
             $attachment_import[] = array('ticket_number' => $D['ticket_number'], 'ticket_id' => $ticket_id,
-              'created' => $D['file_created'],
+              'created' => $D['file_created'], 'thread_entry_created' => $D['thread_entry_created'],
               'object_id' => $D['att_obj_id'], 'id' => $D['att_file_id'],
               'inline' => $D['att_inline'], 'name' => $D['file_name'], 'size' => $D['file_size'],
               'signature' => $D['file_signature'], 'key' => $D['file_key'],
@@ -63,15 +63,32 @@ class AttachmentManager extends Module {
 
           foreach ($attachment_import as $attachment)
           {
-            $thread_id = self::getThreadIdByCombo($attachment['ticket_id'], 'T');
-            $thread_entry_id = self::getIdByCombo($thread_id, $attachment['created']);
+            $ticket_id = Ticket::getIdByNumber($attachment['ticket_number']);
+            if(!$ticket_id)
+            {
+              var_dump('Unknown Ticket Number: ' . $attachment['ticket_number']);
+              continue;
+            }
+            $thread_id = self::getThreadIdByCombo($ticket_id, 'T');
+            $thread_entry_created = $attachment['thread_entry_created'];
+            $thread_entry_id = self::getIdByCombo($thread_id, $thread_entry_created);
 
             $attachment['object_id'] = $thread_entry_id;
             $file_id = self::getFileIdBySignature($attachment['signature']);
+            // var_dump('thread id: ' . $thread_id . ', thread entry id: ' . $thread_entry_id . ' created on ' . $thread_entry_created . ', file id: ' . $file_id);
             if($file_id != 0 && $thread_entry_id != 0)
             {
-              self::createAttachment($attachment);
+              $new_att = self::createAttachment($attachment);
+              if (!$new_att)
+              {
+                echo "Attachment not created";
+              }
             }
+            else
+            {
+              var_dump('file id ' . $file_id . ' thread entry id ' . $thread_entry_id);
+            }
+
           }
           unset($attachment_import);
 
@@ -94,18 +111,24 @@ class AttachmentManager extends Module {
 
                   $attachment_file = $att->getFile();
 
-                  $thread_id = self::getThreadId($attachment_obj_id);
-                  $ticket_id = self::getTicketId($thread_id);
-                  $ticket_number = self::getNumberById($ticket_id);
+                  if($attachment_obj_id != 0)
+                  {
+                    $thread_id = self::getThreadId($attachment_obj_id);
+                    $thread_entry_created = self::getThreadEntryCreated($attachment_obj_id);
+                    $ticket_id = self::getTicketId($thread_id);
+                    $ticket_number = self::getNumberById($ticket_id);
 
-                  $attachments_clean[] = array(
-                      '- attachment' => '', '  ticket_number' => $ticket_number,
-                      '  att_obj_id' => $attachment_obj_id, '  att_file_id' => $attachment_file_id,
-                      '  att_inline' => $attachment_inline,
-                      '  file_type' => $attachment_file->getType(), '  file_size' => $attachment_file->getSize(),
-                      '  file_name' => $attachment_file->getName(), '  file_created' => $attachment_file->created,
-                      '  file_key' => $attachment_file->getKey(), '  file_signature' => $attachment_file->getSignature()
-                  );
+                    $attachments_clean[] = array(
+                        '- attachment' => '', '  ticket_number' => $ticket_number,
+                        '  att_obj_id' => $attachment_obj_id, '  att_file_id' => $attachment_file_id,
+                        '  att_inline' => $attachment_inline,
+                        '  file_type' => $attachment_file->getType(), '  file_size' => $attachment_file->getSize(),
+                        '  file_name' => $attachment_file->getName(), '  file_created' => $attachment_file->created,
+                        '  file_key' => $attachment_file->getKey(), '  file_signature' => $attachment_file->getSignature(),
+                        '  thread_entry_created' => $thread_entry_created
+                    );
+                  }
+
                 }
               }
 
@@ -188,6 +211,16 @@ class AttachmentManager extends Module {
           ->filter(array(
             'id'=>$object_id))
           ->values_flat('thread_id')
+          ->first();
+      return $row ? $row[0] : 0;
+    }
+
+    private function getThreadEntryCreated($object_id)
+    {
+      $row = ThreadEntry::objects()
+          ->filter(array(
+            'id'=>$object_id))
+          ->values_flat('created')
           ->first();
       return $row ? $row[0] : 0;
     }
