@@ -130,14 +130,14 @@ class FormEntryValManager extends Module {
               unset($form_entry_vals);
 
               //export yaml file
-              echo (Spyc::YAMLDump($form_entry_vals_clean, false, 0));
+              // echo (Spyc::YAMLDump($form_entry_vals_clean, false, 0));
 
-              // if(!file_exists('form_entry_value.yaml'))
-              // {
-              //   $fh = fopen('form_entry_value.yaml', 'w');
-              //   fwrite($fh, (Spyc::YAMLDump($form_entry_vals_clean, false, 0)));
-              //   fclose($fh);
-              // }
+              if(!file_exists('form_entry_value.yaml'))
+              {
+                $fh = fopen('form_entry_value.yaml', 'w');
+                fwrite($fh, (Spyc::YAMLDump($form_entry_vals_clean, false, 0)));
+                fclose($fh);
+              }
               unset($form_entry_vals_clean);
             }
             else

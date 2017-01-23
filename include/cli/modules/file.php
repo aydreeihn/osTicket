@@ -1,8 +1,6 @@
 <?php
-
 class FileManager extends Module {
     var $prologue = 'CLI file manager for osTicket';
-
     var $arguments = array(
         'action' => array(
             'help' => 'Action to be performed',
@@ -19,7 +17,6 @@ class FileManager extends Module {
             ),
         ),
     );
-
     var $options = array(
         'ticket' => array('-T', '--ticket', 'metavar'=>'id',
             'help' => 'Search by internal ticket id'),
@@ -36,26 +33,19 @@ class FileManager extends Module {
             'help' => 'Search for files larger than this. k, M, G are welcome'),
         'max-size' => array('-Z', '--max-size', 'metavar'=>'SIZE',
             'help' => 'Search for files smaller than this. k, M, G are welcome'),
-
         'limit' => array('-L', '--limit', 'metavar'=>'count',
             'help' => 'Limit search results to this count'),
-
         'to' => array('-m', '--to', 'metavar'=>'BK',
             'help' => 'Target backend for migration. See `backends` action
                 for a list of available backends'),
-
         'file' => array('-f', '--file', 'metavar'=>'FILE',
             'help' => 'Filename used for import and export'),
-
         'verbose' => array('-v', '--verbose', 'action'=>'store_true',
             'help' => 'Be more verbose'),
     );
-
-
     function run($args, $options) {
         Bootstrap::connect();
         osTicket::start();
-
         switch ($args['action']) {
         case 'backends':
             // List configured backends
@@ -63,7 +53,6 @@ class FileManager extends Module {
                 print "$char -- {$bk::$desc} ($bk)\n";
             }
             break;
-
         case 'list':
             // List files matching criteria
             // ORM would be nice!
@@ -77,7 +66,6 @@ class FileManager extends Module {
                 }
             }
             break;
-
         case 'dump':
             $files = AttachmentFile::objects();
             $this->_applyCriteria($options, $files);
@@ -90,11 +78,9 @@ class FileManager extends Module {
             catch (ObjectNotUnique $e) {
                 $this->fail('Criteria must select exactly 1 file');
             }
-
             if ($bk = $f->open())
                 $bk->passthru();
             break;
-
         case 'load':
             // Load file content from STDIN
             $files = AttachmentFile::objects();
@@ -108,19 +94,16 @@ class FileManager extends Module {
             catch (ObjectNotUnique $e) {
                 $this->fail('Criteria must select exactly 1 file');
             }
-
             try {
                 if ($bk = $f->open())
                     $bk->unlink();
             }
             catch (Exception $e) {}
-
             if ($options['to'])
                 $bk = FileStorageBackend::lookup($options['to'], $f);
             else
                 // Use the system default
                 $bk = AttachmentFile::getBackendForFile($f);
-
             $type = false;
             $signature = '';
             $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -154,29 +137,22 @@ class FileManager extends Module {
                 if (!$bk->flush())
                     $this->fail('Unable to commit file contents to backend');
             }
-
             // TODO: Update file metadata
             $f->bk = $bk->getBkChar();
             $f->created = SqlFunction::NOW();
             $f->type = $type;
             $f->signature = $signature;
-
             if (!$f->save())
                 $this->fail('Unable to update file metadata');
-
             $this->stdout->write("Successfully saved contents\n");
             break;
-
         case 'migrate':
             if (!$options['to'])
                 $this->fail('Please specify a target backend for migration');
-
             if (!FileStorageBackend::isRegistered($options['to']))
                 $this->fail('Target backend is not installed. See `backends` action');
-
             $files = AttachmentFile::objects();
             $this->_applyCriteria($options, $files);
-
             $count = 0;
             foreach ($files as $f) {
                 if ($f->getBackend() == $options['to'])
@@ -195,7 +171,6 @@ class FileManager extends Module {
             }
             $this->stdout->write("Migrated $count files\n");
             break;
-
         /**
          * export
          *
@@ -222,17 +197,13 @@ class FileManager extends Module {
         case 'export':
             $files = AttachmentFile::objects();
             $this->_applyCriteria($options, $files);
-
             if (!$options['file'] || $options['file'] == '-')
                 $options['file'] = 'php://stdout';
-
             if (!($stream = fopen($options['file'], 'wb')))
                 $this->fail($options['file'].': Unable to open file for export stream');
-
             foreach ($files as $f) {
                 if ($options['verbose'])
                     $this->stderr->write($f->name."\n");
-
                 // TODO: Log %attachment and %ticket_attachment entries
                 $info = array('file' => $f->getInfo());
                 $header = serialize($info);
@@ -245,7 +216,6 @@ class FileManager extends Module {
             }
             fclose($stream);
             break;
-
         /**
          * import
          *
@@ -262,10 +232,8 @@ class FileManager extends Module {
         case 'import':
             if (!$options['file'] || $options['file'] == '-')
                 $options['file'] = 'php://stdin';
-
             if (!($stream = fopen($options['file'], 'rb')))
                 $this->fail($options['file'].': Unable to open import stream');
-
             while (true) {
                 // Read the file header
                 // struct file_data_header {
@@ -275,24 +243,19 @@ class FileManager extends Module {
                 // };
                 if (!($header = fread($stream, 12)))
                     break; // EOF
-
                 list(, $mark, $hlen, $dlen) = unpack('V3', $header);
-
                 // AFIL written as little-endian 4-byte int is 0x4c4946xx (LIFA),
                 // where 'A' is the version code of the export
                 $version = $mark & 0xff;
                 if (($mark >> 8) != 0x4c4946)
                     $this->fail('Bad file record');
-
                 // Read the header
                 $header = fread($stream, $hlen);
                 if (strlen($header) != $hlen)
                     $this->fail('Short read getting header info');
-
                 $header = unserialize($header);
                 if (!$header)
                     $this->fail('Unable to decipher file header');
-
                 // Find or create the file record
                 $finfo = $header['file'];
                 // TODO: Consider the $version code
@@ -327,7 +290,6 @@ class FileManager extends Module {
                             $finfo['name']));
                     }
                 }
-
                 // Determine the backend to recieve the file contents
                 if ($options['to']) {
                     $bk = FileStorageBackend::lookup($options['to'], $f);
@@ -336,15 +298,12 @@ class FileManager extends Module {
                 else {
                     $bk = AttachmentFile::getBackendForFile($f);
                 }
-
                 if ($options['verbose'])
                     $this->stdout->write('Importing '.$f->getName()."\n");
-
                 // Write file contents to the backend
                 $md5 = hash_init('md5');
                 $sha1 = hash_init('sha1');
                 $written = 0;
-
                 // Handle exceptions by dropping imported file contents and
                 // then returning the error to the error output stream.
                 try {
@@ -365,10 +324,11 @@ class FileManager extends Module {
                                 $f->getName()
                             ));
                         }
-
                         // See if dlen  was wrong... e.g empty file.
                         $strpos = strpos($contents, 'EOF');
                         if ($strpos !== false) {
+
+
                             list(, $eof) = unpack('N',
                                     substr($contents, $strpos, 4));
                             // Make sure we're at EOF 4realz
@@ -376,10 +336,11 @@ class FileManager extends Module {
                                 $len = (strlen($contents)-$strpos);
                                 $contents = substr($contents, 0, $strpos);
                                 $pos=fseek($stream, ftell($stream)-$len);
+
                             } else // false eof
                                 $strpos = false;
-                        }
 
+                        }
                         // Calculate MD5 and SHA1 hashes of the file to verify
                         // contents after successfully written to backend
                         if ($contents && !$bk->write($contents))
@@ -397,9 +358,8 @@ class FileManager extends Module {
                     if ($written && !$bk->flush())
                         throw new Exception(
                             'Unable to commit file contents to backend');
-
                     // Check the signature hash
-                    if ($finfo['signature']) {
+                    if ($finfo['signature'] && $written) {
                         $md5 = base64_encode(hash_final($md5, true));
                         $sha1 = base64_encode(hash_final($sha1, true));
                         $sig = str_replace(
@@ -408,23 +368,21 @@ class FileManager extends Module {
                             substr($sha1, 0, 16) . substr($md5, 0, 16));
                         if ($sig != $finfo['signature']) {
                             throw new Exception(sprintf(
-                                '%s: Signature verification failed',
-                                $f->getName()
+                                '%s: Signature verification failed (%s)',
+                                $f->getName(),
+                                $finfo['signature']
                             ));
                         }
                     }
-
                     // Update file to record current backend
                     $f->bk = $bk->getBkChar();
                     if (!$f->save())
                         return false;
-
                 } // end try
                 catch (Exception $ex) {
                     if ($bk) $bk->unlink();
                     $this->fail($ex->getMessage());
                 }
-
                 // Read file record footer
                 $footer = fread($stream, 4);
                 if (strlen($footer) != 4)
@@ -435,19 +393,16 @@ class FileManager extends Module {
                     $this->fail('Incorrect file EOF marker');
             }
             break;
-
         case 'zip':
             // Create a temporary ZIP file
             $files = AttachmentFile::objects();
             $this->_applyCriteria($options, $files);
             if (!$options['file'])
                 $this->fail('Please specify zip file with `-f`');
-
             $zip = new ZipArchive();
             if (true !== ($reason = $zip->open($options['file'],
                     ZipArchive::CREATE)))
                 $this->fail($reason.': Unable to create zip file');
-
             foreach ($files as $f) {
                 if ($options['verbose'])
                     $this->stderr->write($f->name."\n");
@@ -460,26 +415,21 @@ class FileManager extends Module {
             }
             $zip->close();
             break;
-
         case 'expunge':
             $files = AttachmentFile::objects();
             $this->_applyCriteria($options, $files);
-
             foreach ($files as $m) {
                 // Drop associated attachment links
                 $m->tickets->expunge();
                 $f = AttachmentFile::lookup($m->id);
-
                 // Drop file contents
                 if ($bk = $f->open())
                     $bk->unlink();
-
                 // Drop file record
                 $f->delete();
             }
         }
     }
-
     function _applyCriteria($options, $qs) {
         foreach ($options as $name=>$val) {
             if (!$val) continue;
@@ -500,11 +450,9 @@ class FileManager extends Module {
             case 'status':
                 if (!in_array($val, array('open','closed','archived','deleted')))
                     $this->fail($val.': Unknown ticket status');
-
                 $qs->filter(array('attachments__thread_entry__thread__ticket__status__state'=>$val));
                 $qs->distinct('id');
                 break;
-
             case 'min-size':
             case 'max-size':
                 $info = array();
@@ -520,7 +468,6 @@ class FileManager extends Module {
                 else
                     $qs->filter(array('size__lte'=>$val));
                 break;
-
             case 'limit':
                 if (!is_numeric($val))
                     $this->fail('Provide an result count number to --limit');

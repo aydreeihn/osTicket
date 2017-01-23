@@ -75,6 +75,7 @@ class AttachmentManager extends Module {
 
             $attachment['object_id'] = $thread_entry_id;
             $file_id = self::getFileIdBySignature($attachment['signature']);
+            $attachment['id'] = $file_id;
             // var_dump('thread id: ' . $thread_id . ', thread entry id: ' . $thread_entry_id . ' created on ' . $thread_entry_created . ', file id: ' . $file_id);
             if($file_id != 0 && $thread_entry_id != 0)
             {

@@ -1,5 +1,5 @@
 <?php
-
+require_once(INCLUDE_DIR.'class.forms.php');
 
 //adriane
 class TicketPriority extends VerySimpleModel {
@@ -184,21 +184,23 @@ class TicketManager extends Module {
             //save variables out of each individual form entry (max 2 per ticket)
             foreach ($form_entry as $T)
             {
-              $form_id = $T['form_id'];
+              $form_name = $T['form_name'];
               $extra = $T['extra'];
               $sort = $T['sort'];
             }
 
             //parse form id
-            $form_id_all = explode(",", $form_id);
+            $form_name_all = explode(",", $form_name);
 
             //object_id
             $object_id = Ticket::getIdByNumber($D['number']);
 
-            foreach ($form_id_all as $fid)
+            foreach ($form_name_all as $fname)
             {
+              $form_id = self::getFormIdByName($fname);
+
               //form_entry table
-              $form_entry_import[] = array('form_id' => $fid,
+              $form_entry_import[] = array('form_id' => $form_id,
                   'object_id' => $object_id, 'object_type' => 'T', 'extra' => $extra, 'sort' => $sort);
             }
 
@@ -514,6 +516,16 @@ class TicketManager extends Module {
       return $row ? $row[0] : 0;
     }
 
+    //Form Id By Name
+    static function getFormIdByName($name) {
+        $row = DynamicForm::objects()
+            ->filter(array('title'=>$name))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
+
     private function getFormId($ticket_id)
     {
         $row = DynamicFormEntry::objects()
@@ -535,19 +547,28 @@ class TicketManager extends Module {
 
     private function getFormName($form_id)
     {
-      $row = Form::objects()
-          ->filter(array(
-            'id'=>$form_id))
-          ->values_flat('title');
+      //parse form id
+      $form_id_all = explode(",", $form_id);
+
+      foreach ($form_id_all as $fid)
+      {
+        $row = DynamicForm::objects()
+            ->filter(array(
+              'id'=>$fid))
+            ->values_flat('title');
+
 
           if(count($row) != 0)
           {
+
             for ($i=0; $i<count($row); $i++)
             {
               $form_names .= implode(',', $row[$i]) . ',';
             }
           }
-          return rtrim($form_names, ',');
+
+      }
+      return rtrim($form_names, ',');
     }
 
     //methods for related object
