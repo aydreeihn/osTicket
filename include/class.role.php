@@ -198,13 +198,30 @@ class Role extends RoleModel {
         return $role;
     }
 
-    static function __create($vars, &$errors) {
-        $role = self::create($vars);
-        if ($vars['permissions'])
-            $role->updatePerms($vars['permissions']);
+    static function __create($vars, &$errors, $fetch=false) {
+        //see if role already exists
+        if ($fetch && ($roleId=Role::getIdByName($vars['name'])))
+        {
+          return $roleId;
+        }
+        else
+        {
+          $role = self::create($vars);
+          if ($vars['permissions'])
+              $role->updatePerms($vars['permissions']);
 
-        $role->save();
-        return $role;
+          $role->save();
+          return $role;
+        }
+    }
+
+    static function getIdByName($name) {
+        $row = static::objects()
+            ->filter(array('name'=>$name))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
     }
 
     static function getRoles($criteria=null, $localize=true) {
