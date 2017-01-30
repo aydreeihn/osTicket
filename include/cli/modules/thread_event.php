@@ -14,7 +14,6 @@ class ThreadEventManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -49,13 +48,6 @@ class ThreadEventManager extends Module {
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
-          // $tcount = 0;
-          // $acount = 0;
-          // $ncount = 0;
-          // $gcount = 0;
-          // $scount = 0;
-          // $ucount = 0;
-
           //processing for thread entries
           foreach ($data as $D)
           {
@@ -66,17 +58,14 @@ class ThreadEventManager extends Module {
 
             if($D['object_type'] == 'T')
             {
-              // $tcount++;
               $thread_id = self::getThreadIdByCombo($ticket_id, $object_type);
             }
             elseif($D['object_type'] == 'A')
             {
-              // $acount++;
               $thread_id = self::getThreadIdByCombo($task_id, $object_type);
             }
             else
             {
-              // $ncount++;
               $thread_id = 0;
             }
 
@@ -97,22 +86,31 @@ class ThreadEventManager extends Module {
             //set staff id in data string to match new staff ids
             if($D['state'] == 'assigned')
             {
-              // $assigned = explode("\"", $D['data']);
               $assigned = json_decode($D['data'], true);
               if(!is_array($assigned['staff']) && !is_null($assigned['staff']))
               {
-                // $ucount++;
                 $assigned['staff'] = $staff_id;
                 $imp_inner = implode($assigned);
                 $D['data'] = '{"staff":' . $imp_inner . '}';
-                // var_dump('data is ' . $D['data']);
               }
               elseif($assigned['staff'][0])
               {
-                // $scount++;
                 $assigned['staff'][0] = $staff_id;
                 $imp_inner = implode(',"',$assigned['staff']);
                 $D['data'] = '{"staff":[' . $imp_inner . '"]}';
+              }
+            }
+
+            //set thread entry id in data string to match imported thread entry id
+            if($D['state'] == 'resent')
+            {
+              $resent = json_decode($D['data'], true);
+              if(!is_array($resent['entry']) && !is_null($resent['entry']))
+              {
+                $thread_entry_id = self::getThreadEntryIdByCombo($thread_id, 'S');
+                $resent['entry'] = $thread_entry_id;
+                $imp_inner = implode($resent);
+                $D['data'] = '{"entry":' . $imp_inner . '}';
               }
             }
 
@@ -125,9 +123,6 @@ class ThreadEventManager extends Module {
             );
 
           }
-          // var_dump('tcount is ' .  $tcount . ' acount is ' . $acount . ' ncount is ' . $ncount);
-          // var_dump('over 21322 is ' . $gcount);
-          // var_dump('assigned to staff array count is ' . $scount . ' assigned to staff !array count is ' . $ucount);
 
           //create threads with a unique name as a new record
           $errors = array();
@@ -199,19 +194,17 @@ class ThreadEventManager extends Module {
                 'uid' => $thread_event->uid, 'uid_type' => $thread_event->uid_type,
                 'annulled' => $thread_event->annulled, 'timestamp' => $thread_event->timestamp
                 );
-
               }
 
-
               //export yaml file
-              echo Spyc::YAMLDump(array_values($clean), true, false, true);
+              // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              // if(!file_exists('thread_event.yaml'))
-              // {
-              //   $fh = fopen('thread_event.yaml', 'w');
-              //   fwrite($fh, (Spyc::YAMLDump($clean)));
-              //   fclose($fh);
-              // }
+              if(!file_exists('thread_event.yaml'))
+              {
+                $fh = fopen('thread_event.yaml', 'w');
+                fwrite($fh, (Spyc::YAMLDump($clean)));
+                fclose($fh);
+              }
 
             }
             else
@@ -254,7 +247,6 @@ class ThreadEventManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $thread_events = ThreadEvent::objects();
@@ -396,6 +388,28 @@ class ThreadEventManager extends Module {
       return $row ? $row[0] : 0;
     }
 
+    private function getThreadEntryIdByCombo($thread_id, $editor_type)
+    {
+      $row = ThreadEntry::objects()
+          ->filter(array(
+            'thread_id'=>$thread_id,
+            'editor_type'=>$editor_type))
+          ->values_flat('id')
+          ->first();
+
+      return $row ? $row[0] : 0;
+    }
+
+    //field Label
+    static function getFieldLabelById($id) {
+        $row = DynamicFormField::objects()
+            ->filter(array('id'=>$id))
+            ->values_flat('label')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
+
     private function getIdByCombo($thread_id, $state, $timestamp)
     {
       $row = ThreadEvent::objects()
@@ -419,21 +433,10 @@ class ThreadEventManager extends Module {
     }
 
     static function __create($vars, &$error=false, $fetch=false) {
-        // //see if thread entry exists
-        // if ($fetch && ($threadEventId=self::getIdByCombo($vars['thread_id'], $vars['state'], $vars['timestamp'])))
-        // {
-        //   // var_dump('match');
-        //   return ThreadEvent::lookup($threadEventId);
-        // }
-        // else
-        // {
-          // var_dump('new');
-          $thread_event = self::create_thread_event($vars);
-          $thread_event->save();
+        $thread_event = self::create_thread_event($vars);
+        $thread_event->save();
 
-          return $thread_event->id;
-        // }
-
+        return $thread_event->id;
     }
 
 
