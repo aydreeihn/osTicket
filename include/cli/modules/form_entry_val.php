@@ -1,29 +1,5 @@
 <?php
 
-//adriane
-class TicketPriority extends VerySimpleModel {
-    static $meta = array(
-        'table' => TICKET_PRIORITY_TABLE,
-        'pk' => array('priority_id'),
-        'joins' => array(
-            'cdata' => array(
-                'constraint' => array('priority_id' => 'TicketCData.priority'),
-            ),
-        ),
-    );
-
-
-    //adriane
-    function getPriorityByName($name) {
-        $row = static::objects()
-            ->filter(array('priority'=>$name))
-            ->values_flat('priority_id')
-            ->first();
-
-        return $row ? $row[0] : 0;
-    }
-}
-
 class FormEntryValManager extends Module {
     var $prologue = 'CLI Form Entry manager';
 

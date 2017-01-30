@@ -1,30 +1,6 @@
 <?php
 require_once(INCLUDE_DIR.'class.forms.php');
 
-//adriane
-class TicketPriority extends VerySimpleModel {
-    static $meta = array(
-        'table' => TICKET_PRIORITY_TABLE,
-        'pk' => array('priority_id'),
-        'joins' => array(
-            'cdata' => array(
-                'constraint' => array('priority_id' => 'TicketCData.priority'),
-            ),
-        ),
-    );
-
-
-    //adriane
-    function getPriorityByName($name) {
-        $row = TicketPriority::objects()
-            ->filter(array('priority'=>$name))
-            ->values_flat('priority_id')
-            ->first();
-
-        return $row ? $row[0] : 0;
-    }
-}
-
 class TicketManager extends Module {
     var $prologue = 'CLI ticket manager';
 
@@ -38,7 +14,6 @@ class TicketManager extends Module {
             ),
         ),
     );
-
 
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
