@@ -54,8 +54,8 @@ class FAQCategoryManager extends Module {
           //create emails with a unique name as a new record
           $errors = array();
           foreach ($data as $o) {
-              if ('self::create' && is_callable('self::create'))
-                  @call_user_func_array('self::create', array($o, &$errors, true));
+              if ('self::__create' && is_callable('self::__create'))
+                  @call_user_func_array('self::__create', array($o, &$errors, true));
               // TODO: Add a warning to the success page for errors
               //       found here
               $errors = array();
@@ -75,7 +75,8 @@ class FAQCategoryManager extends Module {
               {
                 $clean[] = array('ispublic' => $C->ispublic,
                 'name' => $C->getName(), 'description' => $C->getDescription(),
-                'notes' => $C->getNotes());
+                'notes' => $C->getNotes(), 'created' => $C->created,
+                'updated' => $C->updated);
               }
 
               //export yaml file
@@ -128,7 +129,12 @@ class FAQCategoryManager extends Module {
         return $faq_category;
     }
 
-    static function create($vars, &$error=false, $fetch=false) {
+    static function create($vars=false) {
+        $category = new Category($vars);
+        return $category;
+    }
+
+    static function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($catId=Category::findIdByName($vars['name'])))
         {
@@ -138,7 +144,7 @@ class FAQCategoryManager extends Module {
         else
         {
           // var_dump('new');
-          $cat = Category::create($vars);
+          $cat = self::create($vars);
           $cat->save();
           return $cat;
         }

@@ -80,7 +80,8 @@ class UserManager extends Module {
               $org_id = self::getIdByName($D['org_id']);
 
               $user_import[] = array('ID' => $D['ID'], 'org_id' => $org_id,
-              'name' => $D['name'], 'email' => $D['email']
+              'name' => $D['name'], 'email' => $D['email'],
+              'created' => $D['created'], 'updated' => $D['updated']
               );
             }
 
@@ -89,7 +90,7 @@ class UserManager extends Module {
             foreach ($user_import as $o)
             {
                 if ('User::fromVars' && is_callable('User::fromVars'))
-                    @call_user_func_array('User::fromVars', array($o));
+                    @call_user_func_array('User::fromVars', array($o, true, false, true));
                 // TODO: Add a warning to the success page for errors
                 //       found here
                 $errors = array();
@@ -125,11 +126,12 @@ class UserManager extends Module {
               foreach ($users as $U)
               {
                 $clean[] = array('ID' => $U->id, 'org_id' => $U->getOrganization(),
-                'name' => $U->getName(), 'email' => $U->getDefaultEmail());
+                'name' => $U->getName(), 'email' => $U->getDefaultEmail(),
+                'created' => $U->created, 'updated' => $U->updated);
               }
 
               //export yaml file
-              // echo (Spyc::YAMLDump($clean[]));
+              // echo (Spyc::YAMLDump($clean));
 
               if(!file_exists('user.yaml'))
               {

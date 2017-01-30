@@ -115,7 +115,7 @@ class AgentManager extends Module {
                   'isvisible' => $D['isvisible'], 'max_page_size' => $D['max_page_size'],
                   'auto_refresh_rate' => $D['auto_refresh_rate'], 'default_paper_size' => $D['default_paper_size'],
                   'extra' => $D['extra'], 'permissions' => $D['permissions'], 'lastlogin' => $D['lastlogin'],
-                  'passwdreset' => $D['passwdreset']
+                  'passwdreset' => $D['passwdreset'], 'created' => $D['created'], 'updated' => $D['updated']
 
                 );
               }
@@ -123,8 +123,8 @@ class AgentManager extends Module {
               //create staff
               $errors = array();
               foreach ($agent_import as $o) {
-                  if ('self::create' && is_callable('self::create'))
-                      @call_user_func_array('self::create', array($o, &$errors, true));
+                  if ('self::__create' && is_callable('self::__create'))
+                      @call_user_func_array('self::__create', array($o, &$errors, true));
                   // TODO: Add a warning to the success page for errors
                   //       found here
                   $errors = array();
@@ -155,7 +155,7 @@ class AgentManager extends Module {
                 'isvisible' => $S->isvisible, 'max_page_size' => $S->max_page_size,
                 'auto_refresh_rate' => $S->auto_refresh_rate, 'default_paper_size' => $S->default_paper_size,
                 'extra' => $S->extra, 'permissions' => $S->permissions, 'lastlogin' => $S->lastlogin,
-                'passwdreset' => $S->passwdreset
+                'passwdreset' => $S->passwdreset, 'created' => $S->created, 'updated' => $S->updated
 
               );
 
@@ -282,7 +282,12 @@ class AgentManager extends Module {
             return $list[0];
     }
 
-    private function create($vars, &$error=false, $fetch=false) {
+    static function create($vars=false) {
+        $staff = new Staff($vars);
+        return $staff;
+    }
+
+    private function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($staffId=Staff::getIdByEmail($vars['email'])))
         {
@@ -290,7 +295,7 @@ class AgentManager extends Module {
         }
         else
         {
-          $staff = Staff::create($vars);
+          $staff = self::create($vars);
           $staff->save();
           return $staff->staff_id;
         }

@@ -52,8 +52,8 @@ class StatusManager extends Module {
           //create statuses with a unique name as a new record
           $errors = array();
           foreach ($data as $o) {
-              if ('TicketStatus::__create' && is_callable('TicketStatus::__create'))
-                  @call_user_func_array('TicketStatus::__create', array($o, &$errors, true));
+              if ('self::__create' && is_callable('self::__create'))
+                  @call_user_func_array('self::__create', array($o, &$errors, true));
               // TODO: Add a warning to the success page for errors
               //       found here
               $errors = array();
@@ -69,7 +69,10 @@ class StatusManager extends Module {
               //format the array nicely
               foreach ($statuses as $status)
               {
-                $clean[] = array('name' => $status->getName(), 'state' => $status->getState(), 'mode' => $status->get('mode'), 'sort' => $status->get('sort'), 'properties' => $status->get('properties'));
+                $clean[] = array('name' => $status->getName(), 'state' => $status->getState(),
+                                 'mode' => $status->get('mode'), 'sort' => $status->get('sort'),
+                                 'properties' => $status->get('properties'),
+                                 'created' => $status->created, 'updated' => $status->updated);
               }
 
               //export yaml file
@@ -130,6 +133,52 @@ class StatusManager extends Module {
             ->first();
 
         return $row ? $row[0] : 0;
+    }
+
+    static function create($ht=false) {
+        if (!is_array($ht))
+            return null;
+
+        if (!isset($ht['mode']))
+            $ht['mode'] = 1;
+
+        return new TicketStatus($ht);
+    }
+
+    static function __create($ht, &$error=false, $fetch=false) {
+        global $ost;
+
+        //default ticket statuses
+        $defaults = array('Open', 'Resolved', 'Closed', 'Archived', 'Deleted',);
+
+        foreach ($defaults as $D)
+        {
+          if($ht['name'] == $D)
+          {
+            $skip = true;
+          }
+          else {
+            $skip = false;
+          }
+        }
+
+        //see if status exists
+        // if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])) || $skip)
+        if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])))
+        {
+          // var_dump('match');
+          return TicketStatus::lookup($statusId);
+        }
+        else {
+          // var_dump('new');
+          $ht['properties'] = JsonDataEncoder::encode($ht['properties']);
+          if (($status = self::create($ht)))
+              $status->save(true);
+
+          return $status;
+        }
+
+
     }
 
 }

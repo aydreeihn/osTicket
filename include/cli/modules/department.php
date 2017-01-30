@@ -55,11 +55,25 @@ class DepartmentManager extends Module {
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
+          foreach ($data as $D)
+          {
+            $manager_id = self::getStaffIdByEmail($D['manager_email']);
+            // var_dump('passing in ' . $D['manager_email']);
+            // var_dump('getting back ' . $manager_id);
+
+            $department_import[] = array('manager_id' => $manager_id,
+              'name' => $D['name'], 'signature' => $D['signature'],
+              'ispublic' => $D['ispublic'],
+              'group_membership' => $D['group_membership'], 'ticket_auto_response' => $D['ticket_auto_response'],
+              'message_auto_response' => $D['message_auto_response'], 'updated' => $D['updated'],
+              'created' => $D['created']);
+          }
+
           //create departments with a unique name as a new record
           $errors = array();
-          foreach ($data as $o) {
-              if ('Dept::__create' && is_callable('Dept::__create'))
-                  @call_user_func_array('Dept::__create', array($o, &$errors, true));
+          foreach ($department_import as $o) {
+              if ('self::__create' && is_callable('self::__create'))
+                  @call_user_func_array('self::__create', array($o, &$errors, true));
               // TODO: Add a warning to the success page for errors
               //       found here
               $errors = array();
@@ -76,9 +90,12 @@ class DepartmentManager extends Module {
               //format the array nicely
               foreach ($departments as $department)
               {
-                $clean[] = array('name' => $department->getName(), 'signature' => $department->getSignature(),
+                $clean[] = array('manager_email' => self::getStaffEmailById($department->manager_id),
+                  'name' => $department->getName(), 'signature' => $department->getSignature(),
                   'ispublic' => $department->ispublic,
-                  'group_membership' => $department->group_membership);
+                  'group_membership' => $department->group_membership, 'ticket_auto_response' => $department->ticket_auto_response,
+                  'message_auto_response' => $department->message_auto_response, 'updated' => $department->updated,
+                  'created' => $department->created);
 
               }
 
@@ -131,6 +148,40 @@ class DepartmentManager extends Module {
         $departments = Dept::objects();
 
         return $departments;
+    }
+
+    static function getStaffEmailById($id) {
+        $list = Staff::objects()->filter(array(
+            'staff_id'=>$id,
+        ))->values_flat('email')->first();
+
+        if ($list)
+            return $list[0];
+    }
+
+    static function getStaffIdByEmail($email) {
+        $list = Staff::objects()->filter(array(
+            'email'=>$email,
+        ))->values_flat('staff_id')->first();
+
+        if ($list)
+            return $list[0];
+    }
+
+    static function create($vars=false, &$errors=array()) {
+        $dept = new Dept($vars);
+
+        return $dept;
+    }
+
+    static function __create($vars, &$errors) {
+        $dept = self::create($vars);
+        if (!$dept->update($vars, $errors))
+          return false;
+
+       $dept->save();
+
+       return $dept;
     }
 
 }

@@ -1283,12 +1283,12 @@ class DynamicFormEntry extends VerySimpleModel {
     static function create($ht=false, $data=null, $migration=false) {
 
         $inst = new static($ht);
-        $inst->set('created', new SqlFunction('NOW'));
         if ($data)
             $inst->setSource($data);
 
         if(!$migration)
         {
+          $inst->set('created', new SqlFunction('NOW'));
           foreach ($inst->getDynamicFields() as $field) {
               if (!($impl = $field->getImpl($field)))
                   continue;

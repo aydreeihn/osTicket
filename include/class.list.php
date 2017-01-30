@@ -1458,30 +1458,13 @@ implements CustomListItem, TemplateVariable {
     static function __create($ht, &$error=false, $fetch=false) {
         global $ost;
 
-        //default ticket statuses
-        $defaults = array('Open', 'Resolved', 'Closed', 'Archived', 'Deleted',);
-
-        foreach ($defaults as $D)
-        {
-          if($ht['name'] == $D)
-          {
-            $skip = true;
-          }
-          else {
-            $skip = false;
-          }
-        }
-
-
         //see if status exists
         // if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])) || $skip)
         if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])))
         {
-          var_dump('match');
           return self::lookup($statusId);
         }
         else {
-          var_dump('new');
           $ht['properties'] = JsonDataEncoder::encode($ht['properties']);
           if (($status = TicketStatus::create($ht)))
               $status->save(true);

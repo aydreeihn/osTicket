@@ -532,9 +532,13 @@ class Thread extends VerySimpleModel {
         return true;
     }
 
-    static function create($vars=false) {
+    static function create($vars=false, $migration=false) {
         $inst = new static($vars);
-        $inst->created = SqlFunction::NOW();
+
+        if(!$migration)
+        {
+          $inst->created = SqlFunction::NOW();
+        }
         return $inst;
     }
 }

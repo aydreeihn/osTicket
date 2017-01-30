@@ -51,8 +51,8 @@ class RoleManager extends Module {
           //create roles with a unique name as a new record
            $errors = array();
             foreach ($data as $o) {
-                if ('Role::__create' && is_callable('Role::__create'))
-                    @call_user_func_array('Role::__create', array($o, &$errors, true));
+                if ('self::__create' && is_callable('self::__create'))
+                    @call_user_func_array('self::__create', array($o, &$errors, true));
                 // TODO: Add a warning to the success page for errors
                 //       found here
                 $errors = array();
@@ -68,7 +68,9 @@ class RoleManager extends Module {
               //format the array nicely
               foreach ($roles as $R)
               {
-                $clean[] = array('flags' => $R->flags, 'name' => $R->getName(), 'notes' => $R->notes, 'permissions' => $R->permissions);
+                $clean[] = array('flags' => $R->flags, 'name' => $R->getName(),
+                                 'notes' => $R->notes, 'permissions' => $R->permissions,
+                                 'created' => $R->created, 'updated' => $R->updated);
 
               }
 
@@ -125,6 +127,28 @@ class RoleManager extends Module {
         $roles = RoleModel::objects();
 
         return $roles;
+    }
+
+    static function create($vars=false) {
+        $role = new Role($vars);
+        return $role;
+    }
+
+    static function __create($vars, &$errors, $fetch=false) {
+        //see if role already exists
+        if ($fetch && ($roleId=Role::getIdByName($vars['name'])))
+        {
+          return $roleId;
+        }
+        else
+        {
+          $role = self::create($vars);
+          if ($vars['permissions'])
+              $role->updatePerms($vars['permissions']);
+
+          $role->save();
+          return $role;
+        }
     }
 }
 Module::register('role', 'RoleManager');

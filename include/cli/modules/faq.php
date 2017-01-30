@@ -55,14 +55,14 @@ class FAQManager extends Module {
             {
               $faq_import[] = array('category_id' => self::getIdByName($D['category_name']),
                 'ispublished' => $D['ispublished'], 'question' => $D['question'],
-                'answer' => $D['answer']);
+                'answer' => $D['answer'], 'created' => $D['created'], 'updated' => $D['updated']);
             }
 
             //create emails with a unique name as a new record
             $errors = array();
             foreach ($faq_import as $o) {
-                if ('self::create' && is_callable('self::create'))
-                    @call_user_func_array('self::create', array($o, &$errors, true));
+                if ('self::__create' && is_callable('self::__create'))
+                    @call_user_func_array('self::__create', array($o, &$errors, true));
                 // TODO: Add a warning to the success page for errors
                 //       found here
                 $errors = array();
@@ -83,7 +83,7 @@ class FAQManager extends Module {
               {
                 $clean[] = array('category_name' => self::getNameById($F->category_id),
                 'ispublished' => $F->ispublished, 'question' => $F->getQuestion(),
-                'answer' => $F->getAnswer());
+                'answer' => $F->getAnswer(), 'created' => $F->created, 'updated' => $F->updated);
               }
 
               //export yaml file
@@ -164,8 +164,13 @@ class FAQManager extends Module {
            return $row ? $row[0] : null;
        }
 
+     static function create($vars=false) {
+         $faq = new FAQ($vars);
+         return $faq;
+     }
+
     //adriane
-    private function create($vars, &$error=false, $fetch=false) {
+    private function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($faqId=self::getIdByQuestion($vars['question'])))
         {
@@ -175,7 +180,7 @@ class FAQManager extends Module {
         else
         {
           // var_dump('new');
-          $faq = FAQ::create($vars);
+          $faq = self::create($vars);
           $faq->save();
           return $faq->faq_id;
         }

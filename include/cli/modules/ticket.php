@@ -124,7 +124,7 @@ class TicketManager extends Module {
             'source' => $D['source'], 'source_extra' => $D['source_extra'], 'duedate' => $D['duedate'],
             'isoverdue' => $D['isoverdue'], 'isanswered' => $D['isanswered'],
             'est_duedate' => $D['est_duedate'], 'reopened' => $D['reopened'], 'closed' => $D['closed'],
-            'lastupdate' => $D['lastupdate']
+            'lastupdate' => $D['lastupdate'], 'created' => $D['created'], 'updated' => $D['updated'],
             );
           }
 
@@ -153,6 +153,7 @@ class TicketManager extends Module {
               $extra = $T['extra'];
               $lastresponse = $T['lastresponse'];
               $lastmessage = $T['lastmessage'];
+              $created = $T['created'];
             }
 
             //object_id
@@ -160,7 +161,7 @@ class TicketManager extends Module {
 
             //form_entry table
             $thread_import[] = array('object_id' => $object_id, 'object_type' => 'T',
-                'extra' => $extra, 'lastresponse' => $lastresponse, 'lastmessage' => $lastmessage);
+                'extra' => $extra, 'lastresponse' => $lastresponse, 'lastmessage' => $lastmessage, 'created' => $created);
 
           }
 
@@ -187,6 +188,8 @@ class TicketManager extends Module {
               $form_name = $T['form_name'];
               $extra = $T['extra'];
               $sort = $T['sort'];
+              $created = $T['created'];
+              $updated = $T['updated'];
             }
 
             //parse form id
@@ -201,7 +204,7 @@ class TicketManager extends Module {
 
               //form_entry table
               $form_entry_import[] = array('form_id' => $form_id,
-                  'object_id' => $object_id, 'object_type' => 'T', 'extra' => $extra, 'sort' => $sort);
+                  'object_id' => $object_id, 'object_type' => 'T', 'extra' => $extra, 'sort' => $sort, 'created' => $created, 'updated' => $updated);
             }
 
           }
@@ -265,7 +268,7 @@ class TicketManager extends Module {
                 'source' => $ticket->getSource(), 'source_extra' => $ticket->source_extra, 'duedate' => $ticket->getDueDate(),
                 'isoverdue' => $ticket->isoverdue, 'isanswered' => $ticket->isanswered,
                 'est_duedate' => $ticket->getEstDueDate(), 'reopened' => $ticket->getReopenDate(), 'closed' => $ticket->getCloseDate(),
-                'lastupdate' => $ticket->getEffectiveDate(),
+                'lastupdate' => $ticket->getEffectiveDate(), 'created' => $ticket->created, 'updated' => $ticket->updated,
 
                 //related object fields
                 'status_name' => $ticket->getStatus(), 'priority' => $ticket->getPriority(), 'department_name' => $ticket->getDeptName(),
@@ -274,12 +277,14 @@ class TicketManager extends Module {
 
                 'form_entry' => array('- form_entry_id' => self::getFormEntryId($ticket->ticket_id), '  form_id' => self::getFormId($ticket->ticket_id),
                                       '  form_name' => self::getFormName(self::getFormId($ticket->ticket_id)),
-                                      '  extra' => self::getFormExtra($ticket->ticket_id), '  sort' => self::getFormSort($ticket->ticket_id)
+                                      '  extra' => self::getFormExtra($ticket->ticket_id), '  sort' => self::getFormSort($ticket->ticket_id),
+                                      '  created' => self::getFormCreated($ticket->ticket_id), '  updated' => self::getFormUpdated($ticket->ticket_id)
                               ),
 
                  'thread' => array('- object_id' => $ticket->getId(),
                                    '  object_type' => $ticket->thread->object_type, '  extra' => $ticket->thread->extra,
-                                    '  lastresponse' => $ticket->getLastResponseDate(), '  lastmessage' => $ticket->getLastMessageDate())
+                                    '  lastresponse' => $ticket->getLastResponseDate(), '  lastmessage' => $ticket->getLastMessageDate(),
+                                    '  created' => $ticket->created)
                 );
 
             } //end ticket foreach
@@ -374,8 +379,6 @@ class TicketManager extends Module {
     {
       $ticket = new Ticket($vars);
 
-      $ticket->created = new SqlFunction('NOW');
-
       //return the ticket
       return $ticket;
 
@@ -428,7 +431,7 @@ class TicketManager extends Module {
         else
         {
           // var_dump('new thread');
-          $thread = Thread::create($vars);
+          $thread = Thread::create($vars, true);
           $thread->save();
           return $thread->id;
         }
@@ -511,6 +514,30 @@ class TicketManager extends Module {
             'object_type'=>'T',
             'object_id'=>$ticket_id))
           ->values_flat('sort')
+          ->first();
+
+      return $row ? $row[0] : 0;
+    }
+
+    private function getFormCreated($ticket_id)
+    {
+      $row = DynamicFormEntry::objects()
+          ->filter(array(
+            'object_type'=>'T',
+            'object_id'=>$ticket_id))
+          ->values_flat('created')
+          ->first();
+
+      return $row ? $row[0] : 0;
+    }
+
+    private function getFormUpdated($ticket_id)
+    {
+      $row = DynamicFormEntry::objects()
+          ->filter(array(
+            'object_type'=>'T',
+            'object_id'=>$ticket_id))
+          ->values_flat('updated')
           ->first();
 
       return $row ? $row[0] : 0;

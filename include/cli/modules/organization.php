@@ -54,8 +54,8 @@ class OrganizationManager extends Module {
             //create organizations with a unique name as a new record
             $errors = array();
             foreach ($data as $o) {
-                if ('Organization::__create' && is_callable('Organization::__create'))
-                    @call_user_func_array('Organization::__create', array($o, &$errors, true));
+                if ('self::__create' && is_callable('self::__create'))
+                    @call_user_func_array('self::__create', array($o, &$errors, true));
                 // TODO: Add a warning to the success page for errors
                 //       found here
                 $errors = array();
@@ -104,7 +104,7 @@ class OrganizationManager extends Module {
               {
                 $clean[] = array('name' => $organization->getName(), 'manager' => $organization->getAccountManager(),
                 'status' => $organization->get('status'), 'domain' => $organization->get('domain'),
-                'extra' => $organization->get('extra'));
+                'extra' => $organization->get('extra'), 'created' => $organization->created, 'updated' => $organization->updated);
 
               }
 
@@ -166,6 +166,42 @@ class OrganizationManager extends Module {
             ->first();
 
         return $row ? $row[0] : 0;
+    }
+
+    static function create($vars=false) {
+        $org = new Organization($vars);
+        // $org->setStatus(Organization::SHARE_PRIMARY_CONTACT);
+        return $org;
+    }
+
+    // Custom create called by installer/upgrader to load initial data
+    static function __create($ht, &$error=false, $fetch=false) {
+        //see if org exists
+        if ($fetch && ($orgId=self::getIdByName($ht['name'])) || $ht['name'] == null)
+        {
+          // var_dump('found match ' . $ht['name']);
+          return Organization::lookup($orgId);
+        }
+        else
+        {
+          // var_dump('new ' . $ht['name']);
+          $org = static::create($ht);
+
+          // Add dynamic data (if any)
+          if ($ht['fields'])
+          {
+              $org->save(true);
+              $org->addDynamicData($ht['fields']);
+          }
+          //otherwise create without dynamic fields
+          else
+          {
+            $org->save(true);
+          }
+
+          return $org;
+        }
+
     }
 
 }

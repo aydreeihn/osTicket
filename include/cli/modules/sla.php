@@ -52,8 +52,8 @@ class SLAManager extends Module {
           //create SLAs with a unique name as a new record
           $errors = array();
           foreach ($data as $o) {
-              if ('SLA::__create' && is_callable('SLA::__create'))
-                  @call_user_func_array('SLA::__create', array($o, &$errors, true));
+              if ('self::__create' && is_callable('self::__create'))
+                  @call_user_func_array('self::__create', array($o, &$errors, true));
               // TODO: Add a warning to the success page for errors
               //       found here
               $errors = array();
@@ -70,7 +70,9 @@ class SLAManager extends Module {
               //format the array nicely
               foreach ($slas as $sla)
               {
-                $clean[] = array('flags' => $sla->get('flags'), 'grace_period' => $sla->getGracePeriod(), 'name' => $sla->getName(), 'notes' => $sla->get('notes'));
+                $clean[] = array('flags' => $sla->get('flags'), 'grace_period' => $sla->getGracePeriod(),
+                                 'name' => $sla->getName(), 'notes' => $sla->get('notes'),
+                                'created' => $sla->created, 'updated' => $sla->updated);
               }
 
               //export yaml file
@@ -122,6 +124,27 @@ class SLAManager extends Module {
         $slas = SLA::objects();
 
         return $slas;
+    }
+
+    static function create($vars=false, &$errors=array()) {
+        $sla = new SLA($vars);
+        return $sla;
+    }
+
+    static function __create($vars, &$errors=array(), $fetch=false) {
+        //see if sla exists
+        if ($fetch && ($slaId=SLA::getIdByName($vars['name'])))
+        {
+          return SLA::lookup($slaId);
+        }
+        //otherwise create new sla
+        else
+        {
+          $sla = self::create($vars);
+          $sla->save();
+          return $sla;
+        }
+
     }
 
 }

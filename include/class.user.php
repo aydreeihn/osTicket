@@ -196,7 +196,7 @@ implements TemplateVariable {
     var $_entries;
     var $_forms;
 
-    static function fromVars($vars, $create=true, $update=false) {
+    static function fromVars($vars, $create=true, $update=false, $migration=false) {
         // Try and lookup by email address
         $user = static::lookupByEmail($vars['email']);
         if (!$user && $create) {
@@ -206,14 +206,28 @@ implements TemplateVariable {
             elseif (!$name)
                 list($name) = explode('@', $vars['email'], 2);
 
-            $user = new User(array(
-                'name' => Format::htmldecode(Format::sanitize($name, false)),
-                'created' => new SqlFunction('NOW'),
-                'updated' => new SqlFunction('NOW'),
-                //XXX: Do plain create once the cause
-                // of the detached emails is fixed.
-                'default_email' => UserEmail::ensure($vars['email'])
-            ));
+            if(!$migration)
+            {
+              $user = new User(array(
+                  'name' => Format::htmldecode(Format::sanitize($name, false)),
+                  'created' => new SqlFunction('NOW'),
+                  'updated' => new SqlFunction('NOW'),
+                  //XXX: Do plain create once the cause
+                  // of the detached emails is fixed.
+                  'default_email' => UserEmail::ensure($vars['email'])
+              ));
+            }
+            else {
+              $user = new User(array(
+                  'name' => Format::htmldecode(Format::sanitize($name, false)),
+                  'created' => $vars['created'],
+                  'updated' => $vars['updated'],
+                  //XXX: Do plain create once the cause
+                  // of the detached emails is fixed.
+                  'default_email' => UserEmail::ensure($vars['email'])
+              ));
+            }
+
             // Is there an organization registered for this domain
             list($mailbox, $domain) = explode('@', $vars['email'], 2);
             if (isset($vars['org_id']))

@@ -69,7 +69,7 @@ class ThreadEntryManager extends Module {
                 'flags' => $te['flags'], 'poster' => $te['poster'], 'editor' => $te['editor'],
                 'editor_type' => $te['editor_type'], 'source' => $te['source'], 'title' => $te['title'],
                 'body' => $body, 'format' => $te['format'], 'ip_address' => $te['ip_address'],
-                'created' => $te['created']);
+                'created' => $te['created'], 'updated' => $te['updated']);
 
             }
 
@@ -121,7 +121,7 @@ class ThreadEntryManager extends Module {
                 '      editor_type' => $thread_entry->get('editor_type'), '      source' => $thread_entry->getSource(),
                 '      title' => $thread_entry->getTitle(),
                 '      format' => $thread_entry->get('format'), '      ip_address' => $thread_entry->get('ip_address'),
-                '      created' => $thread_entry->get('created'),
+                '      created' => $thread_entry->get('created'), '      updated' => $thread_entry->get('updated'),
 
                 )
                 );
@@ -180,11 +180,12 @@ class ThreadEntryManager extends Module {
         return $thread_entries;
     }
 
-    private function getIdByCombo($thread_id, $created)
+    private function getIdByCombo($thread_id, $body, $created)
     {
       $row = ThreadEntry::objects()
           ->filter(array(
             'thread_id'=>$thread_id,
+            'body'=>$body,
             'created'=>$created))
           ->values_flat('id')
           ->first();
@@ -215,7 +216,7 @@ class ThreadEntryManager extends Module {
 
     static function __create($vars, &$error=false, $fetch=false) {
         //see if thread entry exists
-        if ($fetch && ($threadId=self::getIdByCombo($vars['thread_id'], $vars['created'])))
+        if ($fetch && ($threadId=self::getIdByCombo($vars['thread_id'], $vars['body'], $vars['created'])))
         {
           // var_dump('match');
           return ThreadEntry::lookup($threadId);
