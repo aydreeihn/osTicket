@@ -79,7 +79,14 @@ class ThreadEventManager extends Module {
             if($D['state'] == 'collab')
             {
               $arr = explode("\"", $D['data']);
-              $arr[3] = $user_id;
+              if($user_id)
+              {
+                $arr[3] = $user_id;
+              }
+              else
+              {
+                $arr[3] = 0;
+              }
               $D['data'] = implode("\"",$arr);
             }
 
