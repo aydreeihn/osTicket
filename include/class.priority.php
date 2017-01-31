@@ -77,5 +77,14 @@ implements TemplateVariable {
     function getPublicPriorities() {
         return self::getPriorities(true);
     }
+
+    static function getIdByName($name) {
+        $row = self::objects()
+            ->filter(array('priority'=>$name))
+            ->values_flat('priority_id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
 }
 ?>

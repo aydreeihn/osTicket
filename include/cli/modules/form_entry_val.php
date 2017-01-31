@@ -163,7 +163,7 @@ class FormEntryValManager extends Module {
       //if the entry value is for priority, set value_id
       if ($vars['field_id'] == 22)
       {
-        $FeVal->value_id = TicketPriority::getPriorityByName($vars['value']);
+        $FeVal->value_id = Priority::getIdByName($vars['value']);
       }
 
       //return the form entry value

@@ -86,7 +86,7 @@ class TicketManager extends Module {
             $D['staff_id'] = $staffId;
 
             //priority
-            $priorityId = TicketPriority::getPriorityByName($D['priority']);
+            $priorityId = Priority::getIdByName($D['priority']);
             $D['priority'] = $priorityId;
 
             //ticket table
