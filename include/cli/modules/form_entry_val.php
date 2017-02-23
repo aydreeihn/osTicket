@@ -61,16 +61,13 @@ class FormEntryValManager extends Module {
               $entry_id = self::getFormEntryByCombo($form_id, $ticket_id);
               $field_id = self::getFieldIdByCombo($form_id, $fev['field_label'], $fev['field_name']);
               $field_type = self::getFieldTypeById($field_id);
-              // var_dump('field type is ' . $field_type);
 
               //if value is a list value, map to the id of the list item
               if(strpos($field_type, 'list') !== false)
               {
                 $arr = explode("\"", $fev['value']);
-                // var_dump('old is ' . $arr[1]);
                 $list_id = self::getListIdByName($arr[3]);
                 $arr[1] = $list_id;
-                // var_dump('new is ' . $arr[1]);
                 $fev['value'] = implode("\"",$arr);
               }
 
@@ -78,7 +75,6 @@ class FormEntryValManager extends Module {
               if($field_type == 'files' && $fev['value'] != '[]')
               {
                 $ctr++;
-                // var_dump('val ' . $fev['value'] . ' type ' . $field_type);
                 $arr = explode("\"", $fev['value']);
 
                 switch (count($arr))
@@ -91,18 +87,14 @@ class FormEntryValManager extends Module {
                       foreach ($csarr as $c)
                       {
                         $file_id_mult[] = self::getFileIdBySignature($c);
-                        // var_dump('file id is ' . $file_id);
                       }
                       $file_ids_string = implode(',', $file_id_mult);
                       $fev['value'] = '[' . $file_ids_string . ']';
-                      // var_dump('val is ' . $fev['value']);
                     }
                     else
                     {
                       $file_id = self::getFileIdBySignature($csarr[0]);
-                      // var_dump('file id is ' . $file_id);
                       $fev['value'] = '[' . $file_id . ']';
-                      // var_dump('val is ' . $fev['value']);
                     }
                     break;
 
@@ -112,12 +104,9 @@ class FormEntryValManager extends Module {
                     $arr = explode("\"", $fev['file_signature']);
                     $arr[2] = ltrim($arr[2], ':');
                     $arr[2] = rtrim($arr[2], '}');
-                    // var_dump('arr2 is ' . $arr[2]);
                     $file_id = self::getFileIdBySignature($arr[2]);
                     $arr[2] = ':' . $file_id . '}';
-                    // var_dump('file id is ' . $file_id);
                     $fev['value'] = implode("\"", $arr);
-                    // var_dump('val is ' . $fev['value']);
                     break;
 
                   //json format, 2 files
@@ -128,21 +117,15 @@ class FormEntryValManager extends Module {
                     //file 1
                     $arr[2] = ltrim($arr[2], ':');
                     $arr[2] = rtrim($arr[2], ',');
-                    // var_dump('arr2 is ' . $arr[2]);
                     $file_id1 = self::getFileIdBySignature($arr[2]);
-                    // var_dump('file id is ' . $file_id1);
                     $arr[2] = ':' . $file_id1 . ',';
-                    // var_dump('file id is ' . $file_id1);
 
                     //file 2
                     $arr[4] = ltrim($arr[4], ':');
                     $arr[4] = rtrim($arr[4], '}');
-                    // var_dump('arr2 is ' . $arr[4]);
                     $file_id2 = self::getFileIdBySignature($arr[4]);
-                    // var_dump('file id is ' . $file_id2);
                     $arr[4] = ':' . $file_id2 . '}';
                     $fev['value'] = implode("\"", $arr);
-                    // var_dump('val is ' . $fev['value']);
                     break;
 
                   //json format, 3 files
@@ -152,33 +135,25 @@ class FormEntryValManager extends Module {
                     //file 1
                     $arr[2] = ltrim($arr[2], ':');
                     $arr[2] = rtrim($arr[2], ',');
-                    // var_dump('arr2 is ' . $arr[2]);
                     $file_id1 = self::getFileIdBySignature($arr[2]);
-                    // var_dump('file id is ' . $file_id1);
                     $arr[2] = ':' . $file_id1 . ',';
 
                     //file 2
                     $arr[4] = ltrim($arr[4], ':');
                     $arr[4] = rtrim($arr[4], ',');
-                    // var_dump('arr2 is ' . $arr[4]);
                     $file_id2 = self::getFileIdBySignature($arr[4]);
-                    // var_dump('file id is ' . $file_id2);
                     $arr[4] = ':' . $file_id2 . ',';
 
                     //file 3
                     $arr[6] = ltrim($arr[6], ':');
                     $arr[6] = rtrim($arr[6], '}');
-                    // var_dump('arr2 is ' . $arr[6]);
                     $file_id3 = self::getFileIdBySignature($arr[6]);
-                    // var_dump('file id is ' . $file_id3);
                     $arr[6] = ':' . $file_id3 . '}';
                     $fev['value'] = implode("\"", $arr);
-                    // var_dump('val is ' . $fev['value']);
                     break;
 
                   //json format, > 3 files
                   default:
-                    // var_dump('val is ' . $fev['value']);
                     $ctr0++;
                     break;
                 }
@@ -191,11 +166,12 @@ class FormEntryValManager extends Module {
             }
 
           }
-          var_dump('count is ' . $ctr);
-          var_dump('1 file is ' . $ctr3);
-          var_dump('2file is ' . $ctr2);
-          var_dump('3file is ' . $ctr1);
-          var_dump('none of the above ' . $ctr0);
+          // var_dump('count is ' . $ctr);
+          // var_dump('1 file is ' . $ctr3);
+          // var_dump('2file is ' . $ctr2);
+          // var_dump('3file is ' . $ctr1);
+          // var_dump('none of the above ' . $ctr0);
+
           // import form entry values
           $errors = array();
           foreach ($form_entry_val_import as $o) {
@@ -243,7 +219,6 @@ class FormEntryValManager extends Module {
                 //if value is for an attachment field, map file id(s)
                 if($field_type == 'files' && $form_entry_val->value != '[]')
                 {
-                  // var_dump('val ' . $fev['value'] . ' type ' . $field_type);
                   $arr = explode("\"", $form_entry_val->value);
 
                   switch (count($arr))
@@ -261,32 +236,24 @@ class FormEntryValManager extends Module {
                           if(strpos($c, '[') !== false)
                           {
                             $c = ltrim($c, "[");
-                            // var_dump('c is ' . $c);
                           }
                           elseif(strpos($c, ']') !== false)
                           {
                             $c = rtrim($c, "]");
-                            // var_dump('c is ' . $c);
                           }
                           $file_id = $c;
-                          // var_dump('file id is ' . $file_id);
-                          // $file_signature = array(self::getFileSignatureById($file_id) . ',');
                           array_push($file_signature, self::getFileSignatureById($file_id));
                         }
                         $file_signature_clean[] = '';
-                        // var_dump($file_signature);
                         for ($i=0; $i < count($file_signature); $i++)
                         {
                           if($file_signature[$i])
                           {
                             array_push($file_signature_clean, $file_signature[$i]);
-                            // var_dump($file_signature[$i]);
                           }
                         }
-                        // var_dump($file_signature_clean);
                         $file_signature_string = implode(',', $file_signature_clean);
                         array_push($form_entry_vals_clean, array('      file_signature' => ltrim($file_signature_string, ',')));
-                        // var_dump($file_signature_string);
                       }
                       //only 1 file
                       else
@@ -294,7 +261,6 @@ class FormEntryValManager extends Module {
                         $csarr[0] = ltrim($csarr[0], "[");
                         $csarr[0] = rtrim($csarr[0], "]");
                         $file_id = $csarr[0];
-                        // var_dump('file sig is ' . self::getFileSignatureById($file_id));
                         array_push($form_entry_vals_clean, array('      file_signature' => self::getFileSignatureById($file_id)));
                       }
                       break;
@@ -305,7 +271,7 @@ class FormEntryValManager extends Module {
                       $ssarr = explode("\"", $form_entry_val->value);
                       $file_id = ltrim($ssarr[2], ':');
                       $file_id = rtrim($file_id, '}');
-                      // var_dump('file id is ' . $file_id);
+
                       $file_signature_json = self::getFileSignatureById($file_id);
                       $ssarr[2] = ':' . $file_signature_json . '}';
                       $ssarr = implode("\"",$ssarr);
@@ -320,14 +286,12 @@ class FormEntryValManager extends Module {
                       $ssarr = explode("\"", $form_entry_val->value);
                       $file_id1 = ltrim($ssarr[2], ':');
                       $file_id1 = rtrim($file_id1, ',');
-                      // var_dump('file id is ' . $file_id1);
                       $file_signature_json1 = self::getFileSignatureById($file_id1);
                       $ssarr[2] = ':' . $file_signature_json1 . ',';
 
                       //file2
                       $file_id2 = ltrim($ssarr[4], ':');
                       $file_id2 = rtrim($file_id2, '}');
-                      // var_dump('file id is ' . $file_id2);
                       $file_signature_json2 = self::getFileSignatureById($file_id2);
                       $ssarr[4] = ':' . $file_signature_json2 . '}';
                       $ssarr = implode("\"",$ssarr);
@@ -343,21 +307,18 @@ class FormEntryValManager extends Module {
                       $ssarr = explode("\"", $form_entry_val->value);
                       $file_id1 = ltrim($ssarr[2], ':');
                       $file_id1 = rtrim($file_id1, ',');
-                      // var_dump('file id is ' . $file_id1);
                       $file_signature_json1 = self::getFileSignatureById($file_id1);
                       $ssarr[2] = ':' . $file_signature_json1 . ',';
 
                       //file2
                       $file_id2 = ltrim($ssarr[4], ':');
                       $file_id2 = rtrim($file_id2, ',');
-                      // var_dump('file id is ' . $file_id2);
                       $file_signature_json2 = self::getFileSignatureById($file_id2);
                       $ssarr[4] = ':' . $file_signature_json2 . ',';
 
                       //file3
                       $file_id3 = ltrim($ssarr[6], ':');
                       $file_id3 = rtrim($file_id3, '}');
-                      // var_dump('file id is ' . $file_id3);
                       $file_signature_json3 = self::getFileSignatureById($file_id3);
                       $ssarr[6] = ':' . $file_signature_json3 . '}';
                       $ssarr = implode("\"",$ssarr);
@@ -368,7 +329,6 @@ class FormEntryValManager extends Module {
                     //json format, > 3 files
                     // {"VES151HE_nvblock_0.bin":1240,"VES151HE_nvblock_1.bin":1243,"VES151HE_nvblock_2.bin":1246,"VES151HE_nvblock_3.bin":1249,"VES151HE_nvblock_4.bin":1252,"VES151HE_nvblock_5.bin":1255,"VES151HE_nvblock_6.bin":1258,"VES151HE_nvblock_7.bin":1261}
                     default:
-                      // var_dump('val is ' . $fev['value']);
                       $ctr0++;
                       break;
                   }
