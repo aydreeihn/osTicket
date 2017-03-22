@@ -567,6 +567,17 @@ class FormEntryValManager extends Module {
 
       return $row ? $row[0] : 0;
     }
+    
+    private function getFileSignatureById($file_id)
+    {
+      $row = AttachmentFile::objects()
+          ->filter(array(
+            'id'=>$file_id))
+          ->values_flat('signature')
+          ->first();
+
+      return $row ? $row[0] : 0;
+    }
 }
 Module::register('form_entry_val', 'FormEntryValManager');
 ?>
