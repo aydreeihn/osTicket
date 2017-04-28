@@ -369,7 +369,7 @@ implements TemplateVariable {
     }
 
     function delete() {
-        global $cfg;
+        global $thisstaff, $cfg; //adriane
 
         if (!$cfg
             // Default department cannot be deleted
@@ -384,9 +384,9 @@ implements TemplateVariable {
         if (parent::delete()) {
             // DO SOME HOUSE CLEANING
             //Move tickets to default Dept. TODO: Move one ticket at a time and send alerts + log notes.
-            Ticket::objects()
-                ->filter(array('dept_id' => $id))
-                ->update(array('dept_id' => $cfg->getDefaultDeptId()));
+            // Ticket::objects()
+            //     ->filter(array('dept_id' => $id))
+            //     ->update(array('dept_id' => $cfg->getDefaultDeptId()));
 
             //Move Dept members: This should never happen..since delete should be issued only to empty Depts...but check it anyways
             Staff::objects()
@@ -414,9 +414,16 @@ implements TemplateVariable {
             }
 
             // Delete extended access entries
-            StaffDeptAccess::objects()
-                ->filter(array('dept_id' => $id))
-                ->delete();
+            // StaffDeptAccess::objects()
+            //     ->filter(array('dept_id' => $id))
+            //     ->delete();
+
+            //adriane
+            //write phantom data log
+            require_once('class.phantom.php');
+            $data[] = array('pid' => $this->pid, 'sla_id' => $this->getSLAId(),
+                            'email_id' => $this->getEmailId(), 'name' => $this->getName());
+            Phantom::create($thisstaff, $data, $this);
         }
         return true;
     }

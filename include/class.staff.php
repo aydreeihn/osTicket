@@ -510,7 +510,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable {
     }
 
     function canAccessDept($deptId) {
-        return ($deptId && in_array($deptId, $this->getDepts()) && !$this->isAccessLimited());
+          return ($deptId && in_array($deptId, $this->getDepts()) && !$this->isAccessLimited());
     }
 
     function showAssignedTickets() {
@@ -731,9 +731,9 @@ implements AuthenticatedUser, EmailContact, TemplateVariable {
 
         // DO SOME HOUSE CLEANING
         //Move remove any ticket assignments...TODO: send alert to Dept. manager?
-        Ticket::objects()
-            ->filter(array('staff_id' => $this->getId()))
-            ->update(array('staff_id' => 0));
+        // Ticket::objects()
+        //     ->filter(array('staff_id' => $this->getId()))
+        //     ->update(array('staff_id' => 0));
 
         //Update the poster and clear staff_id on ticket thread table.
         ThreadEntry::objects()
@@ -752,6 +752,14 @@ implements AuthenticatedUser, EmailContact, TemplateVariable {
         StaffDeptAccess::objects()
             ->filter(array('staff_id'=>$this->getId()))
             ->delete();
+
+        //adriane
+        //write phantom data log
+        require_once('class.phantom.php');
+        $data[] = array('username' => $this->getUserName(), 'firstname' => $this->getFirstName(),
+                        'lastname' => $this->getLastName(), 'email' => $this->getEmail());
+        Phantom::create($thisstaff, $data, $this);
+        // $this->_phantom_log = $data;
 
         return true;
     }

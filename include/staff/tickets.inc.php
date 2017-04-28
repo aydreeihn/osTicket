@@ -227,7 +227,12 @@ if (!$view_all_tickets) {
 
     // -- Routed to a department of mine
     if (!$thisstaff->showAssignedOnly() && ($depts=$thisstaff->getDepts()))
-        $visibility->add(array('dept_id__in' => $depts));
+      $visibility->add(array('dept_id__in' => $depts));
+
+    //adriane
+    //tickets assigned to a phantom agent
+    if($phantom_staff = Phantom::getPhantomStaff())
+      $visibility->add(array('staff_id__in' => $phantom_staff));
 
     $tickets->filter(Q::any($visibility));
 }
@@ -515,12 +520,37 @@ return false;">
                 $lc='';
                 if ($showassigned) {
                     if ($T['staff_id'])
-                        $lc = new AgentsName($T['staff__firstname'].' '.$T['staff__lastname']);
+                    {
+                      //adriane
+                      //get phantom name is agent was deleted
+                      if(!($T['staff__firstname'] && $T['staff__lastname']))
+                      {
+                        $phantom = Phantom::getStaffById($T['staff_id']);
+                        $T['staff__firstname'] = $phantom[0]->firstname;
+                        $T['staff__lastname'] = $phantom[0]->lastname;
+                      }
+                      $lc = new AgentsName($T['staff__firstname'].' '.$T['staff__lastname']);
+                    }
                     elseif ($T['team_id'])
-                        $lc = Team::getLocalById($T['team_id'], 'name', $T['team__name']);
+                    {
+                      //get phantom team name if team was deleted
+                      if(!$T['team__name'])
+                      {
+                        $phantom = Phantom::getTeamById($T['team_id']);
+                        $T['team__name'] = $phantom[0]->name;
+                      }
+                      $lc = Team::getLocalById($T['team_id'], 'name', $T['team__name']);
+                    }
+
                 }
                 else {
-                    $lc = Dept::getLocalById($T['dept_id'], 'name', $T['dept__name']);
+                  //get phantom dept name if dept was deleted
+                  if(!$T['dept__name'])
+                  {
+                    $phantom = Phantom::getDeptById($T['dept_id']);
+                    $T['dept__name'] = $phantom[0]->name;
+                  }
+                  $lc = Dept::getLocalById($T['dept_id'], 'name', $T['dept__name']);
                 }
                 $tid=$T['number'];
                 $subject = $subject_field->display($subject_field->to_php($T['cdata__subject']));

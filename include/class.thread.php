@@ -1796,10 +1796,33 @@ class AssignmentEvent extends ThreadEvent {
             $desc = __('Assignee changed by <b>{somebody}</b> to <strong>{assignees}</strong> {timestamp}');
             break;
         case isset($data['staff']):
-            $desc = __('<b>{somebody}</b> assigned this to <strong>{<Staff>data.staff}</strong> {timestamp}');
+            // var_dump('data.staff is');
+            // var_dump($data);
+            //adriane
+            if(!Staff::lookup($data['staff'][0]))
+            {
+              // var_dump('staff deleted');
+              $phantom = Phantom::getStaffById($data['staff'][0]);
+              $desc = __('<b>{somebody}</b> assigned this to <strong>'. $phantom[0]->firstname . ' ' . $phantom[0]->lastname .'</strong> {timestamp}');
+            }
+            else
+            {
+              $desc = __('<b>{somebody}</b> assigned this to <strong>{<Staff>data.staff}</strong> {timestamp}');
+            }
             break;
         case isset($data['team']):
-            $desc = __('<b>{somebody}</b> assigned this to <strong>{<Team>data.team}</strong> {timestamp}');
+            // var_dump('data.staff is');
+            // var_dump($data['team']);
+            //adriane
+            if(!Team::lookup($data['team']))
+            {
+              $phantom = Phantom::getTeamById($data['team']);
+              $desc = __('<b>{somebody}</b> assigned this to <strong>'. $phantom[0]->name .'</strong> {timestamp}');
+            }
+            else
+            {
+              $desc = __('<b>{somebody}</b> assigned this to <strong>{<Team>data.team}</strong> {timestamp}');
+            }
             break;
         case isset($data['claim']):
             $desc = __('<b>{somebody}</b> claimed this {timestamp}');

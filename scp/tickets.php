@@ -449,6 +449,19 @@ $ost->addExtraHeader('<meta name="tip-namespace" content="tickets.queue" />',
     "$('#content').data('tipNamespace', 'tickets.queue');");
 
 if($ticket) {
+    //account for phantom data
+    if(!$ticket->staff_id || !$ticket->team_id || !$ticket->dept_id)
+    {
+      // var_dump('acknowledge one is phantom');
+      //adriane
+      $model = TicketModel::lookup($ticket->ticket_id);
+      $ticket->staff_id = $model->staff_id;
+      // var_dump('staff id ' . $ticket->staff_id);
+      $ticket->team_id = $model->team_id;
+      // var_dump('team id ' . $ticket->team_id);
+      $ticket->dept_id = $model->dept_id;
+      // var_dump('dept id ' . $ticket->dept_id);
+    }
     $ost->setPageTitle(sprintf(__('Ticket #%s'),$ticket->getNumber()));
     $nav->setActiveSubMenu(-1);
     $inc = 'ticket-view.inc.php';

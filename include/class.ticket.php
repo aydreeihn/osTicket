@@ -35,6 +35,7 @@ require_once(INCLUDE_DIR.'class.user.php');
 require_once(INCLUDE_DIR.'class.collaborator.php');
 require_once(INCLUDE_DIR.'class.task.php');
 require_once(INCLUDE_DIR.'class.faq.php');
+require_once(INCLUDE_DIR.'class.phantom.php'); //adriane
 
 class TicketModel extends VerySimpleModel {
     static $meta = array(
@@ -53,6 +54,12 @@ class TicketModel extends VerySimpleModel {
             ),
             'dept' => array(
                 'constraint' => array('dept_id' => 'Dept.id'),
+                'null' => true, //adriane
+            ),
+            'phantom_dept' => array(
+                'constraint' => array('dept_id' => 'Phantom.dept'),
+                'null' => true,
+                'list' => true,
             ),
             'sla' => array(
                 'constraint' => array('sla_id' => 'Sla.id'),
@@ -62,12 +69,22 @@ class TicketModel extends VerySimpleModel {
                 'constraint' => array('staff_id' => 'Staff.staff_id'),
                 'null' => true,
             ),
+            'phantom_staff' => array(
+                'constraint' => array('staff_id' => 'Phantom.staff'),
+                'null' => true,
+                'list' => true,
+            ),
             'tasks' => array(
                 'reverse' => 'Task.ticket',
             ),
             'team' => array(
                 'constraint' => array('team_id' => 'Team.team_id'),
                 'null' => true,
+            ),
+            'phantom_team' => array(
+                'constraint' => array('team_id' => 'Phantom.team'),
+                'null' => true,
+                'list' => true,
             ),
             'topic' => array(
                 'constraint' => array('topic_id' => 'Topic.topic_id'),
@@ -350,11 +367,25 @@ implements RestrictedAccess, Threadable {
     function checkStaffPerm($staff, $perm=null) {
         // Must be a valid staff
         if (!$staff instanceof Staff && !($staff=Staff::lookup($staff)))
-            return false;
+          return false;
+
+        //adriane
+        //Check if the department is a phantom
+        if(!$this->dept)
+        {
+          $model = TicketModel::lookup($this->ticket_id);
+          if($model->dept_id)
+          {
+            $phantom = Phantom::getDeptById($model->dept_id);
+            //if the dept is a phantom, they are allowed to view it
+            if($phantom)
+              $isPhantom = true;
+          }
+        }
 
         // Check access based on department or assignment
         if (($staff->showAssignedOnly()
-            || !$staff->canAccessDept($this->getDeptId()))
+            || (!$staff->canAccessDept($this->getDeptId()) && !$isPhantom))
             // only open tickets can be considered assigned
             && $this->isOpen()
             && $staff->getId() != $this->getStaffId()
@@ -369,7 +400,7 @@ implements RestrictedAccess, Threadable {
             return true;
 
         // Permission check requested -- get role.
-        if (!($role=$staff->getRole($this->getDeptId())))
+        if (!($role=$staff->getRole($this->getDeptId())) && !$isPhantom)
             return false;
 
         // Check permission based on the effective role
@@ -550,7 +581,18 @@ implements RestrictedAccess, Threadable {
 
     function getDeptName() {
         if ($this->dept instanceof Dept)
-            return $this->dept->getFullName();
+          return $this->dept->getFullName();
+
+        //adriane
+        else
+        {
+          // var_dump('it is', $this->phantom_dept);
+          $model = TicketModel::lookup($this->ticket_id);
+          // var_dump('dept is ', Phantom::getDeptById($model->dept_id));
+          $phantom = Phantom::getDeptById($model->dept_id);
+          return $phantom[0]->name;
+        }
+
     }
 
     function getPriorityId() {
@@ -676,16 +718,40 @@ implements RestrictedAccess, Threadable {
         return $this->staff_id;
     }
 
-    function getStaff() {
-        return $this->staff;
+    function getStaff() { //adriane
+      // var_dump("staff is", $this->ht);
+      // var_dump('class is ', get_class($this));
+        if ($this->staff)
+          return $this->staff;
+
+        // if($this->phantom_staff)
+        else
+        {
+          //get the staff_id and assign it to $this
+          $model = TicketModel::lookup($this->ticket_id);
+          if($model->staff_id)
+          {
+            $this->staff_id = $model->staff_id;
+            return new PhantomStaff($this->phantom_staff->first());
+          }
+        }
     }
 
     function getTeamId() {
         return $this->team_id;
     }
 
-    function getTeam() {
+    function getTeam() { //adriane
+      if ($this->team)
         return $this->team;
+      else {
+        $model = TicketModel::lookup($this->ticket_id);
+        if($model->team_id)
+        {
+          $this->team_id = $model->team_id;
+          return new PhantomTeam($this->phantom_team->first());
+        }
+      }
     }
 
     function getAssigneeId() {
@@ -2737,6 +2803,31 @@ implements RestrictedAccess, Threadable {
         if ($this->dirty) {
             $this->updated = SqlFunction::NOW();
         }
+
+        //adriane
+        //avoid overwriting phantom data
+        $model = TicketModel::lookup($this->ticket_id);
+        // if(!array_key_exists('created',$this->dirty) && (!$this->staff_id || !$this->team_id || !$this->dept_id))
+        if(!$this->staff_id || !$this->team_id || !$this->dept_id)
+        {
+          var_dump('hit before?' , $this->staff_id, $this->team_id, $this->dept_id);
+          // $model = TicketModel::lookup($this->ticket_id);
+          if(!$this->staff_id && $model->staff_id)
+            $this->staff_id = $model->staff_id;
+
+          if(!$this->team_id && $model->team_id)
+            $this->team_id = $model->team_id;
+
+          if(!$this->dept_id && $model->dept_id)
+            $this->dept_id = $model->dept_id;
+          var_dump('hit after?' , $this->staff_id, $this->team_id, $this->dept_id);
+
+        }
+        var_dump(array_key_exists('created',$this->dirty));
+        // var_dump(!array_key_exists('created',$this->dirty) && !($this->staff_id || $this->team_id || $this->dept_id), 'should be true');
+        var_dump('hit out?' , $this->staff_id, $this->team_id, $this->dept_id);
+        // return false;
+
         return parent::save($this->dirty || $refetch);
     }
 
@@ -2929,7 +3020,12 @@ implements RestrictedAccess, Threadable {
 
         // -- Routed to a department of mine
         if (!$staff->showAssignedOnly() && ($depts = $staff->getDepts()))
-            $visibility->add(array('dept_id__in' => $depts));
+          $visibility->add(array('dept_id__in' => $depts));
+
+        //adriane
+        //tickets assigned to a phantom agent
+        if($phantom_staff = Phantom::getPhantomStaff())
+          $visibility->add(array('staff_id__in' => $phantom_staff));
 
         $blocks = Ticket::objects()
             ->filter(Q::any($visibility))

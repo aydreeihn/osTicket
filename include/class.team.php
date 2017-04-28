@@ -238,9 +238,15 @@ implements TemplateVariable {
         $this->members->delete();
 
         # Reset ticket ownership for tickets owned by this team
-        Ticket::objects()
-            ->filter(array('team_id' => $id))
-            ->update(array('team_id' => 0));
+        // Ticket::objects()
+        //     ->filter(array('team_id' => $id))
+        //     ->update(array('team_id' => 0));
+
+        //adriane
+        //write phantom data log
+        require_once('class.phantom.php');
+        $data[] = array('name' => $this->getName());
+        Phantom::create($thisstaff, $data, $this);
 
         return true;
     }

@@ -136,6 +136,9 @@ class Bootstrap {
 
         define('API_KEY_TABLE',$prefix.'api_key');
         define('TIMEZONE_TABLE',$prefix.'timezone');
+
+        //adriane
+        define('PHANTOM_TABLE',$prefix.'phantom_log');
     }
 
     function loadConfig() {

@@ -12,8 +12,9 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
-// TODO:  Make ObjectModel models base class and extend VerySimpleModel
-class ObjectModel {
+// TODO:  Make ObjectModel models base class and extend VerySimpleModel -> done?
+//adriane
+class ObjectModel extends VerySimpleModel{
 
     const OBJECT_TYPE_TICKET = 'T';
     const OBJECT_TYPE_THREAD = 'H';
@@ -22,8 +23,13 @@ class ObjectModel {
     const OBJECT_TYPE_FAQ    = 'K';
     const OBJECT_TYPE_FILE   = 'F';
     const OBJECT_TYPE_TASK   = 'A';
+    //adriane
+    const OBJECT_TYPE_STAFF  = 'S';
+    const OBJECT_TYPE_DEPT   = 'D';
+    const OBJECT_TYPE_TEAM   = 'E';
 
-    private function objects() {
+    //adriane
+    static function objects() {
         static $objects = false;
         if ($objects == false) {
             $objects = array(
@@ -34,6 +40,11 @@ class ObjectModel {
                     self::OBJECT_TYPE_FAQ     => 'FAQ',
                     self::OBJECT_TYPE_FILE    => 'AttachmentFile',
                     self::OBJECT_TYPE_TASK    => 'Task',
+                    //adriane
+                    self::OBJECT_TYPE_STAFF   => 'Staff',
+                    self::OBJECT_TYPE_DEPT    => 'Dept',
+                    self::OBJECT_TYPE_TEAM    => 'Team',
+
                     );
         }
 
