@@ -169,13 +169,13 @@ class Email extends VerySimpleModel {
         return $info;
     }
 
-    function send($to, $subject, $message, $attachments=null, $options=null) {
+    function send($to, $subject, $message, $attachments=null, $options=null, $cc=array()) {
 
         $mailer = new Mailer($this);
         if($attachments)
             $mailer->addAttachments($attachments);
 
-        return $mailer->send($to, $subject, $message, $options);
+        return $mailer->send($to, $subject, $message, $options, $cc);
     }
 
     function sendAutoReply($to, $subject, $message, $attachments=null, $options=array()) {
@@ -183,9 +183,11 @@ class Email extends VerySimpleModel {
         return $this->send($to, $subject, $message, $attachments, $options);
     }
 
-    function sendAlert($to, $subject, $message, $attachments=null, $options=array()) {
+    function sendAlert($to, $subject, $message, $attachments=null, $options=array(), $bcc=array()) {
         $options+= array('notice' => true);
-        return $this->send($to, $subject, $message, $attachments, $options);
+        //adriane: admin alert email
+        // var_dump('message is' , $message); //adriane
+        return $this->send($to, $subject, $message, $attachments, $options, $bcc);
     }
 
    function delete() {

@@ -176,13 +176,13 @@ class Thread extends VerySimpleModel {
             $collabs = array();
             foreach ($ids as $k => $cid) {
                 if (($c=Collaborator::lookup($cid))
-                        && $c->getThreadId() == $this->getId()
+                        && ($c->getThreadId() == $this->getId()) //adriane
                         && $c->delete())
                      $collabs[] = $c;
             }
-            $this->getEvents()->log($this->getObject(), 'collab', array(
-                'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
-            ));
+              $this->getEvents()->log($this->getObject(), 'collab', array(
+                  'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
+              ));
         }
 
         //statuses
@@ -195,15 +195,51 @@ class Thread extends VerySimpleModel {
                 'updated' => SqlFunction::NOW(),
                 'isactive' => 1,
             ));
+            //adriane
+            foreach ($vars['cid'] as $c) {
+              $collab = Collaborator::lookup($c);
+              if(get_class($collab) == 'Collaborator') {
+                $collab->setFlag(Collaborator::FLAG_ACTIVE, true);
+                $collab->save();
+              }
+            }
         }
 
-        $this->collaborators->filter(array(
+        //adriane
+        $inactive = $this->collaborators->filter(array(
             'thread_id' => $this->getId(),
             Q::not(array('id__in' => $cids ?: array(0)))
-        ))->update(array(
-            'updated' => SqlFunction::NOW(),
-            'isactive' => 0,
         ));
+        if($inactive) {
+          foreach ($inactive as $i) {
+            var_dump('i is' , $i);
+            $i->setFlag(Collaborator::FLAG_ACTIVE, false);
+            $i->save();
+          }
+          $inactive->update(array(
+              'updated' => SqlFunction::NOW(),
+              'isactive' => 0,
+          ));
+        }
+
+        //adriane
+        //set flag for Cc or Bcc
+        if($vars['recipientType']) {
+          // var_dump('hit');
+          $combo = array_combine($vars['cid'], $vars['recipientType']);
+          foreach ($combo as $id => $type) {
+            $collab = Collaborator::lookup($id);
+            // var_dump('collab is ' , $collab);
+            if(get_class($collab) == 'Collaborator') {
+              if($type == 'Cc')
+                $collab->setFlag(Collaborator::FLAG_CC, true);
+              else {
+                $collab->setFlag(Collaborator::FLAG_CC, false);
+              }
+              $collab->save();
+            }
+          }
+        }
 
         unset($this->ht['active_collaborators']);
         $this->_collaborators = null;
@@ -1326,6 +1362,31 @@ implements TemplateVariable {
             'flags' => $vars['flags'] ?: 0,
         ));
 
+        //adriane: add recipients to thread entry
+        // var_dump('vars is ' , $vars);
+        $recipients = array();
+        if($vars['ccs'] && $vars['emailcollab'] == 1) {
+          $cc = array();
+          foreach ($vars['ccs'] as $c) {
+            $u = User::lookup($c);
+            $email = $u->getEmail()->address;
+            $cc[$c] = $email;
+          }
+          $recipients['cc'] = $cc;
+        }
+        if($vars['bccs'] && $vars['emailcollab'] == 1) {
+          $bcc = array();
+          foreach ($vars['bccs'] as $b) {
+            $u = User::lookup($b);
+            $email = $u->getEmail()->address;
+            $bcc[$b] = $email;
+          }
+          $recipients['bcc'] = $bcc;
+        }
+        if ($recipients)
+          $entry->recipients = json_encode($recipients);
+
+
         if ($entry->format == 'html')
             // The current codebase properly balances html
             $entry->flags |= self::FLAG_BALANCED;
@@ -2298,6 +2359,8 @@ class MessageThreadEntry extends ThreadEntry {
                 && $vars['userId']
                 && ($user = User::lookup($vars['userId'])))
             $vars['poster'] = (string) $user->getName();
+
+        $vars['recipients'] = $vars['recipients']; //adriane
 
         return parent::add($vars);
     }

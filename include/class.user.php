@@ -148,11 +148,21 @@ class UserModel extends VerySimpleModel {
         return true;
     }
 
+    //adriane
+    public function setFlag($flag, $val) {
+
+        if ($val)
+            $this->status |= $flag;
+        else
+            $this->status &= ~$flag;
+    }
+
     protected function hasStatus($flag) {
         return $this->get('status') & $flag !== 0;
     }
 
     protected function clearStatus($flag) {
+        //adriane
         return $this->set('status', $this->get('status') & ~$flag);
     }
 

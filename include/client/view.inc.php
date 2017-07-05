@@ -136,10 +136,26 @@ echo $v;
 <br>
 
 <?php
-    $ticket->getThread()->render(array('M', 'R'), array(
-                'mode' => Thread::MODE_CLIENT,
-                'html-id' => 'ticketThread')
-            );
+    var_dump('user is ' , $thisclient->getId());
+    if($collabs = $ticket->getRecipients()) {
+      foreach ($collabs as $collab) {
+        // var_dump('type is ' , get_class($collab));
+        if(get_class($collab) == 'Collaborator' && $collab->user_id == $thisclient->getId() && !$collab->isCc()) {
+          $viewThreads = true;
+        }
+      }
+    }
+    if ($viewThreads)
+      $ticket->getThread()->render(array('M', 'R', 'N'), array(
+                  'mode' => Thread::MODE_CLIENT,
+                  'html-id' => 'ticketThread')
+              );
+    else
+      $ticket->getThread()->render(array('M', 'R'), array(
+                  'mode' => Thread::MODE_CLIENT,
+                  'html-id' => 'ticketThread')
+              );
+
 ?>
 
 <div class="clear" style="padding-bottom:10px;"></div>
@@ -156,6 +172,31 @@ if (!$ticket->isClosed() || $ticket->isReopenable()) { ?>
 ?>#reply" name="reply" method="post" enctype="multipart/form-data">
     <?php csrf_token(); ?>
     <h2><?php echo __('Post a Reply');?></h2>
+    <!-- adriane -->
+    <div width="120">
+        <label><strong><?php echo __('Collaborators'); ?>:</strong></label>
+
+        <input type='checkbox' value='1' name="emailcollab"
+        id="t<?php echo $ticket->getThreadId(); ?>-emailcollab"
+            <?php echo ((!$info['emailcollab'] && !$errors) || isset($info['emailcollab']))?'checked="checked"':''; ?>
+            style="display:<?php echo $ticket->getThread()->getNumCollaborators() ? 'inline-block': 'none'; ?>;"
+            >
+        <?php
+        $recipients = __('Add Recipients');
+        if ($ticket->getThread()->getNumCollaborators())
+            $recipients = sprintf(__('Recipients (%d of %d)'),
+                    $ticket->getThread()->getNumActiveCollaborators(),
+                    $ticket->getThread()->getNumCollaborators());
+
+        echo sprintf('<span><a class="collaborators preview"
+                href="#thread/%d/collaborators"><span id="t%d-recipients">%s</span></a></span>',
+                $ticket->getThreadId(),
+                $ticket->getThreadId(),
+                $recipients);
+       ?>
+    </div>
+
+    <!-- adriane -->
     <input type="hidden" name="id" value="<?php echo $ticket->getId(); ?>">
     <input type="hidden" name="a" value="reply">
     <div>

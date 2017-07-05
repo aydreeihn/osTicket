@@ -34,6 +34,10 @@ implements EmailContact, ITicketUser {
         ),
     );
 
+    //adriane
+    const FLAG_ACTIVE = 0x0001;
+    const FLAG_CC = 0x0002;
+
     function __toString() {
         return Format::htmlchars($this->toString());
     }
@@ -46,7 +50,8 @@ implements EmailContact, ITicketUser {
     }
 
     function isActive() {
-        return $this->isactive;
+        // return $this->isactive;
+        return !!($this->flags & self::FLAG_ACTIVE); //adriane
     }
 
     function getCreateDate() {
@@ -78,6 +83,16 @@ implements EmailContact, ITicketUser {
     }
     function getName() {
         return $this->user->getName();
+    }
+
+    //adriane
+    static function getIdByUserId($userId) {
+        $row = Collaborator::objects()
+            ->filter(array('user_id'=>$userId))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
     }
 
     // VariableReplacer interface
@@ -112,6 +127,20 @@ implements EmailContact, ITicketUser {
     }
     function getUserId() {
         return $this->user_id;
+    }
+
+    //adriane
+    public function setFlag($flag, $val) {
+
+        if ($val)
+            $this->flags |= $flag;
+        else
+            $this->flags &= ~$flag;
+    }
+
+    function isCc()
+    {
+        return !!($this->flags & self::FLAG_CC);
     }
 
     static function create($vars=false) {

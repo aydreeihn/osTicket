@@ -45,7 +45,7 @@ if ($_POST)
     <tbody>
         <tr>
             <th colspan="2">
-                <em><strong><?php echo __('User Information'); ?></strong>: </em>
+                <em><strong><?php echo __('Recipient Information'); ?></strong>: </em>
                 <div class="error"><?php echo $errors['user']; ?></div>
             </th>
         </tr>
@@ -116,6 +116,59 @@ if ($_POST)
         </tr>
         <?php
         } ?>
+        <!-- adriane -->
+        <tr>
+           <td width="120">
+               <label><strong><?php echo __('Collaborators'); ?>:</strong></label>
+           </td>
+           <td>
+               <input type='checkbox' value='1' name="emailcollab"
+               id="emailcollab"
+                   <?php echo ((!$info['emailcollab'] && !$errors) || isset($info['emailcollab']))?'checked="checked"':''; ?>
+
+                   >
+               <?php
+              ?>
+           </td>
+        </tr>
+        <tr>
+            <td width="160"><?php echo __('Cc'); ?>:</td>
+            <td>
+                <select name="ccs[]" id="cc_users3" multiple="multiple"
+                    data-placeholder="<?php echo __('Select Contacts'); ?>">
+                    <option value=""></option>
+                    <?php
+                    $users = User::objects();
+                    foreach ($users as $u) {
+                      if($user && $u->id != $user->getId()) {
+                    ?>
+                    <option value="<?php echo $u->id; ?>"
+                        ><?php echo $u->getName(); ?>
+                    </option>
+                        <?php } } ?>
+                </select>
+                <br/><span class="error"><?php echo $errors['ccs']; ?></span>
+            </td>
+        </tr>
+        <tr>
+            <td width="160"><?php echo __('Bcc'); ?>:</td>
+            <td>
+                <select name="bccs[]" id="bcc_users3" multiple="multiple"
+                    data-placeholder="<?php echo __('Select Contacts'); ?>">
+                    <option value=""></option>
+                    <?php
+                    $users = User::objects();
+                    foreach ($users as $u) {
+                      if($user && $u->id != $user->getId()) {
+                    ?>
+                    <option value="<?php echo $u->id; ?>"
+                        ><?php echo $u->getName(); ?>
+                    </option>
+                        <?php } } ?>
+                </select>
+                <br/><span class="error"><?php echo $errors['ccs']; ?></span>
+            </td>
+        </tr>
     </tbody>
     <tbody>
         <tr>
@@ -449,5 +502,23 @@ $(function() {
     <?php
     } ?>
 });
-</script>
 
+// adriane
+$(function() {
+    $('a#editorg').click( function(e) {
+        e.preventDefault();
+        $('div#org-profile').hide();
+        $('div#org-form').fadeIn();
+        return false;
+     });
+
+    $(document).on('click', 'form.org input.cancel', function (e) {
+        e.preventDefault();
+        $('div#org-form').hide();
+        $('div#org-profile').fadeIn();
+        return false;
+    });
+    $("#cc_users3").select2({width: '300px'});
+    $("#bcc_users3").select2({width: '300px'});
+});
+</script>

@@ -81,52 +81,150 @@ class ThreadAjaxAPI extends AjaxController {
         $info = array();
         if (!$user_info)
             $info['error'] = __('Unable to find user in directory');
-
+        var_dump('hit3');
         return self::_addcollaborator($thread, null, $form, $info);
     }
 
     //Collaborators utils
-    function addCollaborator($tid, $uid=0) {
+    //adriane
+    //pass another thing here like cc/bcc t/f
+    // function addCollaborator($tid, $uid=0, $cc=true) {
+    function addCollaborator($tid, $uid=0, $cc) {
+    // function addCollaborator($tid, $uid=array(), $cc) {
         global $thisstaff;
+
+        // var_dump('made it');
+        // var_dump('tid is' , $tid);
+        // var_dump('$uid is' , $uid);
+        // var_dump('$cc is' , $cc);
 
         if (!($thread=Thread::lookup($tid))
                 || !($object=$thread->getObject())
                 || !$object->checkStaffPerm($thisstaff))
             Http::response(404, __('No such thread'));
 
-
+        $collaborators = $thread->getCollaborators();
+        $cuids = array();
+        $cc_cids = array();
+        $bcc_cids = array();
+        foreach ($collaborators as $c) {
+             $cuids[] = $c->user_id;
+             if($c->flags & Collaborator::FLAG_CC)
+                $cc_cids[] = $c->user_id;
+              else {
+                $bcc_cids[] = $c->user_id;
+              }
+        }
+        // var_dump('uid is ' , $uid);
         $user = $uid? User::lookup($uid) : null;
+        // var_dump('user is' , $user);
+
+        if(!$_POST)
+          var_dump('not a post');
 
         //If not a post then assume new collaborator form
-        if(!$_POST)
-            return self::_addcollaborator($thread, $user);
+        // if(!$_POST)
+        //   return self::_addcollaborator($thread, $user, null, array(), $cc);
 
-        $user = $form = null;
-        if (isset($_POST['id']) && $_POST['id']) { //Existing user/
+        // var_dump('cuids is ' , $cuids , ' post is ' , $_POST['ccs']);
+        // $user = $form = null;
+        $users = array();
+        if (isset($_POST['id']) && $_POST['id']) //Existing user/
             $user =  User::lookup($_POST['id']);
-        } else { //We're creating a new user!
-            $form = UserForm::getUserForm()->getForm($_POST);
-            $user = User::fromForm($form);
+
+
+        if (isset($_POST['ccs']) && $_POST['ccs']) { //multiple users
+          $vars = array();
+          $del = array();
+          if($cc == 'true') {
+            $vars['cids'] = $cc_cids;
+            foreach ($cc_cids as $cid) {
+              if(!in_array(strval($cid), $_POST['ccs']))
+              {
+                var_dump('trying to delete ccs');
+                $errors = $info = array();
+                $del[] = strval(Collaborator::getIdByUserId($cid));
+              }
+            }
+          }
+          if($cc == 'false') {
+            $vars['cids'] = $bcc_cids;
+            foreach ($bcc_cids as $cid) {
+              if(!in_array(strval($cid), $_POST['ccs']))
+              {
+                var_dump('trying to delete bccs');
+                $errors = $info = array();
+                $del[] = strval(Collaborator::getIdByUserId($cid));
+              }
+            }
+          }
+
+          if ($del) {
+            $vars['del'] = $del;
+            $thread->updateCollaborators($vars, $errors);
+          }
+
+          foreach ($_POST['ccs'] as $uid) {
+            $users[] =  User::lookup($uid);
+          }
         }
 
         $errors = $info = array();
         if ($user) {
-            // FIXME: Refuse to add ticket owner??
-            if (($c=$thread->addCollaborator($user,
-                            array('isactive'=>1), $errors))) {
+          var_dump('im here. uid is ', $uid);
+            // if (($c=$thread->addCollaborator($user,array('isactive'=>1), $errors))) { //works on view
+            if (($_POST) && ($c=$thread->addCollaborator($user,array('isactive'=>1), $errors))) {
+            // if (($uid || $_POST) && ($c=$thread->addCollaborator($user,array('isactive'=>1), $errors))) {
+                var_dump('$_POST is' , $_POST);
+                if($cc == 'true') {
+                  $c->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
+                  $c->setFlag(Collaborator::FLAG_CC, true);
+                  $c->save();
+                }
+                else {
+                  $c->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
+                  $c->setFlag(Collaborator::FLAG_CC, false);
+                  $c->save();
+                }
+
                 $info = array('msg' => sprintf(__('%s added as a collaborator'),
                             Format::htmlchars($c->getName())));
                 return self::_collaborators($thread, $info);
             }
         }
 
+        if ($users) {
+          foreach ($users as $u) {
+            if (!in_array($u->getId(), $cuids) && ($c2=$thread->addCollaborator($u,
+                            array('isactive'=>1), $errors))) {
+                if($cc == 'true') {
+                  $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
+                  $c2->setFlag(Collaborator::FLAG_CC, true);
+                  $c2->save();
+                }
+                else {
+                  $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
+                  $c2->setFlag(Collaborator::FLAG_CC, false);
+                  $c2->save();
+                }
+
+                $info = array('msg' => sprintf(__('Collaborator(s) added')));
+                self::_collaborators($thread, $info);
+            }
+          }
+          if(!$info)
+            $info = array('msg' => sprintf(__('Collaborator(s) already exist')));
+
+          return self::_collaborators($thread, $info);
+        }
+
         if($errors && $errors['err']) {
             $info +=array('error' => $errors['err']);
         } else {
-            $info +=array('error' =>__('Unable to add collaborator.').' '.__('Internal error occurred'));
+            // $info +=array('error' =>__('Unable to add collaborator.').' '.__('Internal error occurred'));
         }
 
-        return self::_addcollaborator($thread, $user, $form, $info);
+        return self::_addcollaborator($thread, $user, $form, $info, $cc);
     }
 
     function updateCollaborator($tid, $cid) {
@@ -195,23 +293,18 @@ class ThreadAjaxAPI extends AjaxController {
 
         ob_start();
         include STAFFINC_DIR . 'templates/collaborators-preview.tmpl.php';
+        // include CLIENTINC_DIR . 'templates/collaborators-preview.tmpl.php';
         $resp = ob_get_contents();
         ob_end_clean();
 
         return $resp;
     }
 
-    function _addcollaborator($thread, $user=null, $form=null, $info=array()) {
+    //adriane
+    function _addcollaborator($thread, $user=null, $form=null, $info=array(), $cc=null) {
         global $thisstaff;
 
-        $info += array(
-                    'title' => __('Add a collaborator'),
-                    'action' => sprintf('#thread/%d/add-collaborator',
-                        $thread->getId()),
-                    'onselect' => sprintf('ajax.php/thread/%d/add-collaborator/',
-                        $thread->getId()),
-                    );
-
+        $info = array('title' => __('Add a collaborator'));
         ob_start();
         include STAFFINC_DIR . 'templates/user-lookup.tmpl.php';
         $resp = ob_get_contents();

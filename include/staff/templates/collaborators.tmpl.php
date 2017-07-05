@@ -13,18 +13,34 @@ if(($users=$thread->getCollaborators())) {?>
     <?php
     foreach($users as $user) {
         $checked = $user->isActive() ? 'checked="checked"' : '';
+        $cc = $user->isCc() ? 'selected="selected"' : '';
+        $bcc = !$user->isCc() ? 'selected="selected"' : '';
+        // adriane
         echo sprintf('<tr>
                         <td>
                             <label class="inline checkbox">
                             <input type="checkbox" name="cid[]" id="c%d" value="%d" %s>
                             </label>
                             <a class="collaborator" href="#thread/%d/collaborators/%d/view">%s%s</a>
-                            <span class="faded"><em>%s</em></span></td>
+                            <div align="left">
+                                <span class="faded"><em>%s</em></span>
+                            </div>
+                        </td>
+                        <td>
+                          <select name="recipientType[]">
+                              <option value="Cc" %s>Cc</option>
+                              <option value="Bcc" %s>Bcc</option>
+                          </select>
+                        </td>
                         <td width="10">
                             <input type="hidden" name="del[]" id="d%d" value="">
-                            <a class="remove" href="#d%d">&times;</a></td>
+                            <a class="remove" href="#d%d">
+                              <i class="icon-trash icon-fixed-width"></i>
+                            </a>
+                        </td>
                         <td width="30">&nbsp;</td>
-                    </tr>',
+                    </tr>'
+                    ,
                     $user->getId(),
                     $user->getId(),
                     $checked,
@@ -34,15 +50,20 @@ if(($users=$thread->getCollaborators())) {?>
                         ? $U->getAvatar()->getImageTag(24) : '',
                     Format::htmlchars($user->getName()),
                     $user->getEmail(),
+                    $cc,
+                    $bcc,
                     $user->getId(),
                     $user->getId());
+                    // Format::htmlchars($user->getEmail());
     }
     ?>
+    <td>
+      <div><a class="collaborator" id="addcollaborator"
+          href="#thread/<?php echo $thread->getId(); ?>/add-collaborator"
+          ><i class="icon-plus-sign"></i> <?php echo __('Add Collaborator'); ?></a></div>
+    </td>
     </table>
     <hr style="margin-top:1em"/>
-    <div><a class="collaborator"
-        href="#thread/<?php echo $thread->getId(); ?>/add-collaborator"
-        ><i class="icon-plus-sign"></i> <?php echo __('Add New Collaborator'); ?></a></div>
     <div id="savewarning" style="display:none; padding-top:2px;"><p
     id="msg_warning"><?php echo __('You have made changes that you need to save.'); ?></p></div>
     <p class="full-width">
@@ -88,10 +109,20 @@ if ($_POST && $thread && $thread->getNumCollaborators()) {
 $(function() {
 
     $(document).on('click', 'form.collaborators a#addcollaborator', function (e) {
-        e.preventDefault();
-        $('div#manage_collaborators').hide();
-        $('div#add_collaborator').fadeIn();
-        return false;
+        var tid = <?php echo $thread->getId(); ?>;
+        var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
+         $.userLookup(url, function(user) {
+            console.log(user);
+            if($('.dialog#confirm-action #collaborator-confirm').length) {
+                $('.dialog#confirm-action #action').val('addcc');
+                $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
+                $('#overlay').show();
+                $('.dialog#confirm-action .confirm-action').hide();
+                $('.dialog#confirm-action p#collaborator-confirm')
+                .show()
+                .parent('div').show().trigger('click');
+            }
+         });
      });
 
     $(document).on('click', 'form.collaborators a.remove', function (e) {
