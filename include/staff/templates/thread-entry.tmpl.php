@@ -53,9 +53,12 @@ if ($user && $cfg->isAvatarsEnabled())
         if ($entry->flags & ThreadEntry::FLAG_RESENT) { ?>
             <span class="label label-bare"><?php echo __('Resent'); ?></span>
 <?php   }
-        if ($entry->flags & ThreadEntry::FLAG_COLLABORATOR) { ?>
-            <span class="label label-bare"><?php echo __('Collaborator'); ?></span>
-<?php   } ?>
+        if ($entry->flags & ThreadEntry::FLAG_COLLABORATOR && $entry->type == 'N') { ?>
+            <span class="label label-bare"><?php echo __('Bcc Collaborator'); ?></span>
+<?php   }
+        if ($entry->flags & ThreadEntry::FLAG_COLLABORATOR && $entry->type == 'M') { ?>
+            <span class="label label-bare"><?php echo __('Cc Collaborator'); ?></span>
+        <?php   } ?>
         </span>
         </div>
 <?php

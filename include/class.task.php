@@ -1150,6 +1150,20 @@ class Task extends TaskModel implements RestrictedAccess, Threadable {
 
     }
 
+    //mine:
+    function addCollaborator($user, $vars, &$errors, $event=true, $cc=null) {
+
+        // if (!$user || $user->getId() == $this->getOwnerId())
+        //     return null;
+
+        if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event, $cc)) {
+            $this->collaborators = null;
+            $this->recipients = null;
+        }
+
+        return $c;
+    }
+
     /*
      * Notify collaborators on response or new message
      *

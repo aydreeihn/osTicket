@@ -376,26 +376,6 @@ implements RestrictedAccess, Threadable {
         return $role->hasPerm($perm);
     }
 
-    //adriane
-    function checkUserPerm($user, $perm=null) {
-        // Must be a valid user
-        if (!$user instanceof User && !($user=User::lookup($user)))
-            return false;
-
-        if (($this->isOpen()
-            && $user->getId() != $this->getUserId())
-        ) {
-            return false;
-        }
-
-        // At this point user has view access unless a specific permission is
-        // requested
-        if ($perm === null)
-            return true;
-
-        return true;
-    }
-
     function checkUserAccess($user) {
         if (!$user || !($user instanceof EndUser))
             return false;
@@ -888,16 +868,35 @@ implements RestrictedAccess, Threadable {
     }
 
     //UserList of recipients  (owner + collaborators)
-    function getRecipients() {
-        if (!isset($this->recipients)) {
-            $list = new UserList();
-            $list->add($this->getOwner());
-            if ($collabs = $this->getThread()->getActiveCollaborators()) {
-                foreach ($collabs as $c)
+    function getRecipients($excludeBcc=false) {
+        if ($excludeBcc && isset($this->recipients)) {
+          $list = new UserList();
+
+          if ($collabs = $this->getThread()->getActiveCollaborators()) {
+              $list->add($this->getOwner());
+              foreach ($collabs as $c) {
+                if (get_class($c) == 'Collaborator' && !$c->isCc()) //skip bcc
+                    continue;
+                  else
                     $list->add($c);
-            }
-            $this->recipients = $list;
+                }
+              }
+
+          $this->recipients = $list;
         }
+        //I think we need to rebuild each time since it
+        //would be incomplete if called after an exclude bcc call
+        else {
+          $list = new UserList();
+          $list->add($this->getOwner());
+          if ($collabs = $this->getThread()->getActiveCollaborators()) {
+              foreach ($collabs as $c) {
+                $list->add($c);
+              }
+          }
+          $this->recipients = $list;
+        }
+
         return $this->recipients;
     }
 
@@ -1004,8 +1003,7 @@ implements RestrictedAccess, Threadable {
         if (!$user || $user->getId() == $this->getOwnerId())
             return null;
 
-        // if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event)) {
-        if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event, $cc)) { //adriane
+        if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event, $cc)) {
             $this->collaborators = null;
             $this->recipients = null;
         }
@@ -1498,12 +1496,13 @@ implements RestrictedAccess, Threadable {
      * Notify collaborators on response or new message
      *
      */
-
-    function  notifyCollaborators($entry, $vars = array()) {
+     //adriane: this is needed
+    function notifyCollaborators($entry, $vars = array()) {
         global $cfg;
 
         if (!$entry instanceof ThreadEntry
             || !($recipients=$this->getRecipients())
+            // || !($recipients=$this->getThread()->getActiveCollaborators())
             || !($dept=$this->getDept())
             || !($tpl=$dept->getTemplate())
             || !($msg=$tpl->getActivityNoticeMsgTemplate())
@@ -1512,40 +1511,21 @@ implements RestrictedAccess, Threadable {
             return;
         }
 
-        //adriane
+        $poster = User::lookup($entry->user_id);
+        $posterEmail = $poster->getEmail()->address;
+
         if($vars['ccs']) {
           foreach ($vars['ccs'] as $cc) {
-            $collab = Collaborator::getIdByUserId($cc);
+            $collab = Collaborator::getIdByUserId($cc, $this->getThread()->getId());
             $recipients[] = Collaborator::lookup($collab);
           }
         }
 
         if($vars['bccs']) {
           foreach ($vars['bccs'] as $bcc) {
-            $collab = Collaborator::getIdByUserId($bcc);
+            $collab = Collaborator::getIdByUserId($bcc, $this->getThread()->getId());
             $recipients[] = Collaborator::lookup($collab);
           }
-        }
-
-        // Who posted the entry?
-        $skip = array();
-        if ($entry instanceof MessageThreadEntry) {
-            $poster = $entry->getUser();
-            // Skip the person who sent in the message
-            $skip[$entry->getUserId()] = 1;
-            // Skip all the other recipients of the message
-            foreach ($entry->getAllEmailRecipients() as $R) {
-                foreach ($recipients as $R2) {
-                    if (0 === strcasecmp($R2->getEmail(), $R->mailbox.'@'.$R->host)) {
-                        $skip[$R2->getUserId()] = true;
-                        break;
-                    }
-                }
-            }
-        } else {
-            $poster = $entry->getStaff();
-            // Skip the ticket owner
-            $skip[$this->getUserId()] = 1;
         }
 
         $vars = array_merge($vars, array(
@@ -1562,32 +1542,55 @@ implements RestrictedAccess, Threadable {
         if ($vars['from_name'])
             $options += array('from_name' => $vars['from_name']);
 
-        // var_dump('recips is ' , $recipients);
-        $sendcc = array();
-        var_dump('how many recips? ' , count($recipients));
-        foreach ($recipients as $recipient) {
-          // var_dump('in class.tick, recip is ' , get_class($recipient));
-          //adriane
-          if(get_class($recipient) == 'Collaborator') {
-            // var_dump('email is' , $recipient->getEmail()->address);
-            $sendcc[] = $recipient->getEmail()->address;
-          }
-          if(get_class($recipient) == 'TicketOwner') {
-            $owner = $recipient;
-          }
-          if(get_class($recipient) == 'Ticket') {
-            var_dump('what' , $recipient);
-          }
-          // var_dump('email class is' , get_class($email));
-            // Skip folks who have already been included on this part of
-            // the conversation
-            //what is this???
-            // if (isset($skip[$recipient->getUserId()]))
-            //     continue;
-            $notice = $this->replaceVars($msg, array('recipient' => $recipient));
-            // $email->send($recipient, $notice['subj'], $notice['body'], $attachments,
-            //     $options, $sendcc);
+        $skip = array();
+        if ($entry instanceof MessageThreadEntry) {
+          foreach ($entry->getAllEmailRecipients() as $R) {
+                $skip[] = $R->mailbox.'@'.$R->host;
+            }
         }
+
+        $collaborators = array();
+        $collabsCc = array();
+        $collabsBcc = array();
+        var_dump('how many recips? ' . count($recipients));
+        foreach ($recipients as $recipient) {
+            if(get_class($recipient) == 'Collaborator') {
+              //get entry recipients here. remove if need to
+              if ($recipient->isCc()) {
+                $collabsCc[] = $recipient->getEmail()->address;
+                $cnotice = $this->replaceVars($msg, array('recipient.name.first' => 'Collaborator', 'recipient' => $recipient));
+              }
+              else
+                $collabsBcc[] = $recipient;
+            }
+
+            if(get_class($recipient) == 'TicketOwner') {
+              $owner = $recipient;
+            }
+         }
+
+         foreach ($collabsBcc as $recipient) {
+           $notice = $this->replaceVars($msg, array('recipient' => $recipient));
+           if ($posterEmail != $recipient->getEmail()->address)
+             $email->send($recipient, $notice['subj'], $notice['body'], $attachments,
+                 $options);
+         }
+
+        foreach ($collabsCc as $cc) {
+          if (in_array($cc, $skip))
+            continue;
+          elseif ($cc != $posterEmail)
+            $collaborators[] = $cc;
+        }
+
+        if ($owner->getEmail()->address != $poster->getEmail()->address && !in_array($owner->getEmail()->address, $skip))
+          $collaborators[] = $owner->getEmail()->address;
+
+        $collaborators['cc'] = $collaborators;
+
+        // //adriane: collaborator email sent out
+        $email->send('', $cnotice['subj'], $cnotice['body'], $attachments,
+            $options, $collaborators);
     }
 
     function onMessage($message, $autorespond=true, $reopen=true) {
@@ -2006,6 +2009,9 @@ implements RestrictedAccess, Threadable {
     function replaceVars($input, $vars = array()) {
         global $ost;
 
+        //try to call getrecips with bool to get rid of bcc
+        $recipients = $this->getRecipients(true);
+
         $vars = array_merge($vars, array('ticket' => $this));
         return $ost->replaceTemplateVariables($input, $vars);
     }
@@ -2352,11 +2358,20 @@ implements RestrictedAccess, Threadable {
         //lookup user by userId. if they are bcc in thread, post internal note
         if($collabs = $this->getRecipients()) {
           foreach ($collabs as $collab) {
-            // var_dump('type is ' , get_class($collab));
             if(get_class($collab) == 'Collaborator' && $collab->user_id == $vars['userId'] && !$collab->isCc()) {
               $user = User::lookup($vars['userId']);
+              $vars['note'] = $vars['message'];
+
+              $hdr = Mail_parse::splitHeaders($vars['header'], true);
+              foreach (array('Cc', 'CC', 'Bcc', 'BCC') as $k) {
+                if (isset($hdr[$k]) && $hdr[$k] && ($addresses=Mail_Parse::parseAddressList($hdr[$k])))
+                  $isMsg = true;
+              }
               //post internal note
-              return $this->postNote(array('note' => $vars['message']),$errors, $user, false);
+              if (!$isMsg) {
+                return $this->postNote($vars,$errors, $user, true);
+              }
+
             }
           }
         }
@@ -2365,15 +2380,6 @@ implements RestrictedAccess, Threadable {
             return null;
 
         $this->setLastMessage($message);
-
-        // var_dump('msg is ' , $message);
-        // var_dump('still here'); //adriane
-        //adriane
-        if ($vars['emailcollab']) {
-            var_dump('do something'); //adriane
-            //adriane: this is when collabs notified on agent response
-            $this->notifyCollaborators($message, array('signature' => '', 'ccs' => $vars['ccs'], 'bccs' => $vars['bccs']));
-        }
 
         // Add email recipients as collaborators...
         if ($vars['recipients']
@@ -2391,14 +2397,22 @@ implements RestrictedAccess, Threadable {
                 if (strcasecmp($recipient['source'], 'delivered-to') === 0)
                     continue;
 
-                if (($user=User::fromVars($recipient)))
-                    if ($c=$this->addCollaborator($user, $info, $errors, false))
-                        // FIXME: This feels very unwise — should be a
-                        // string indexed array for future
-                        $collabs[$c->user_id] = array(
-                            'name' => $c->getName()->getOriginal(),
-                            'src' => $recipient['source'],
-                        );
+                if (($cuser=User::fromVars($recipient))) {
+                  if (!$existing = Collaborator::getIdByUserId($cuser->getId(), $this->getThreadId())) {
+                    if ($c=$this->addCollaborator($cuser, $info, $errors, false)) {
+                      $c->setCc();
+
+                      // FIXME: This feels very unwise — should be a
+                      // string indexed array for future
+                      $collabs[$c->user_id] = array(
+                          'name' => $c->getName()->getOriginal(),
+                          'src' => $recipient['source'],
+                      );
+                    }
+                  }
+
+                }
+
             }
             // TODO: Can collaborators add others?
             if ($collabs) {
@@ -2419,7 +2433,10 @@ implements RestrictedAccess, Threadable {
         $this->onMessage($message, ($autorespond && $alerts), $reopen); //must be called b4 sending alerts to staff.
 
         if ($autorespond && $alerts && $cfg && $cfg->notifyCollabsONNewMessage())
-            $this->notifyCollaborators($message, array('signature' => ''));
+        {
+          //adriane: when user replies, this is where collabs notified
+          $this->notifyCollaborators($message, array('signature' => ''));
+        }
 
         if (!($alerts && $autorespond))
             return $message; //Our work is done...
@@ -2482,8 +2499,12 @@ implements RestrictedAccess, Threadable {
                 $email->sendAlert($staff, $alert['subj'], $alert['body'], null, $options);
                 $sentlist[] = $staff->getEmail();
             }
-        }
 
+              // user alert may need to go here
+              // $email->send($user, $msg['subj'], $msg['body'], $attachments,
+              //     $options);
+
+        }
         return $message;
     }
 
@@ -2575,23 +2596,16 @@ implements RestrictedAccess, Threadable {
           foreach ($vars['ccs'] as $uid) {
             $user = User::lookup($uid);
             if (!in_array($uid, $collabIds))
-              if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors))) {
-                    $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
-                    $c2->setFlag(Collaborator::FLAG_CC, true);
-                    $c2->save();
-              }
+              if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors)))
+                    $c2->setCc();
           }
         }
         if (isset($vars['bccs'])) {
-          var_dump('vars bccs is ' , $vars['bccs']);
           foreach ($vars['bccs'] as $uid) {
             $user = User::lookup($uid);
             if (!in_array($uid, $collabIds))
-              if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors))) {
-                $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
-                $c2->setFlag(Collaborator::FLAG_CC, false);
-                $c2->save();
-              }
+              if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors)))
+                $c2->setBcc();
           }
         }
 
@@ -2640,8 +2654,6 @@ implements RestrictedAccess, Threadable {
         else
           $email = $dept->getEmail();
 
-        var_dump('$email ' , $email);
-
         $options = array('thread'=>$response);
         $signature = $from_name = '';
         if ($thisstaff && $vars['signature']=='mine')
@@ -2677,16 +2689,16 @@ implements RestrictedAccess, Threadable {
         );
 
         $user = $this->getOwner();
-        // if (($email=$dept->getEmail())
-        if (($tpl = $dept->getTemplate()) //adriane
+        if (($email=$dept->getEmail())
+            && ($tpl = $dept->getTemplate())
             && ($msg=$tpl->getReplyMsgTemplate())
         ) {
             $msg = $this->replaceVars($msg->asArray(),
                 $variables + array('recipient' => $user)
             );
             $attachments = $cfg->emailAttachments()?$response->getAttachments():array();
+          }
 
-            $collabs = array();
             $collabsCc = array();
             $collabsBcc = array();
             if (isset($vars['ccs'])) {
@@ -2694,31 +2706,37 @@ implements RestrictedAccess, Threadable {
                 $collabUser = User::lookup($uid);
                 $collabsCc[] = $collabUser->getEmail()->address;
               }
-              $collabs['cc'] = $collabsCc;
+              $collabsCc['cc'] = $collabsCc;
             }
             if (isset($vars['bccs'])) {
               foreach ($vars['bccs'] as $uid) {
                 $collabUser = User::lookup($uid);
-                $collabsBcc[] = $collabUser->getEmail()->address;
+                $collabsBcc[] = $collabUser;
               }
-              $collabs['bcc'] = $collabsBcc;
             }
-            if ($vars['emailcollab'] == 1)
-              $email->send($user, $msg['subj'], $msg['body'], $attachments,
-                  $options, $collabs);
+
+            if ($vars['emailcollab'] == 1) {
+                $email->send($user, $msg['subj'], $msg['body'], $attachments,
+                    $options, $collabsCc);
+
+              if ($collabsBcc) {
+                foreach ($collabsBcc as $recipient) {
+                  if (($bcctpl = $dept->getTemplate())
+                      && ($bccmsg=$bcctpl->getReplyMsgTemplate())
+                  )
+                    $bccmsg = $this->replaceVars($bccmsg->asArray(),
+                        $variables + array('recipient' => $user, 'recipient.name.first' => $recipient->getName()->getFirst())
+                    );
+                  $email->send($recipient, $bccmsg['subj'], $bccmsg['body'], $attachments,
+                      $options);
+                }
+              }
+
+            }
             else
               $email->send($user, $msg['subj'], $msg['body'], $attachments,
                   $options);
-        }
 
-        if ($vars['emailcollab']) {
-          var_dump('hit here instead'); //adriane
-            $this->notifyCollaborators($response,
-                array(
-                    'signature' => $signature,
-                    'from_name' => $from_name)
-            );
-        }
         return $response;
     }
 
@@ -2753,12 +2771,12 @@ implements RestrictedAccess, Threadable {
     function postNote($vars, &$errors, $poster=false, $alert=true) {
         global $cfg, $thisstaff;
 
-        //Who is posting the note - staff or system?
+        //Who is posting the note - staff or system? or user?
         if ($vars['staffId'] && !$poster)
             $poster = Staff::lookup($vars['staffId']);
 
         $vars['staffId'] = $vars['staffId'] ?: 0;
-        if ($poster && is_object($poster)) {
+        if ($poster && is_object($poster) && !$vars['userId']) {
             $vars['staffId'] = $poster->getId();
             $vars['poster'] = $poster->getName();
         }
@@ -3705,39 +3723,34 @@ implements RestrictedAccess, Threadable {
         if (!($ticket=self::create($create_vars, $errors, 'staff', false)))
             return false;
 
-        //adriane
         $collabs = array();
         $collabsCc = array();
         $collabsBcc = array();
         if (isset($vars['ccs'])) {
           foreach ($vars['ccs'] as $uid) {
-            $user = User::lookup($uid);
-            // $collabs[] = $user->getEmail()->address;
-            $collabsCc[] = $user->getEmail()->address;
-            if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors))) {
-                  $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
-                  $c2->setFlag(Collaborator::FLAG_CC, true);
-                  $c2->save();
+            $ccuser = User::lookup($uid);
+
+            if ($ccuser && !$existing = Collaborator::getIdByUserId($ccuser->getId(), $ticket->getThreadId())) {
+                $collabsCc[] = $ccuser->getEmail()->address;
+
+              if (($c2=$ticket->getThread()->addCollaborator($ccuser,array('isactive'=>1), $errors)))
+                    $c2->setCc();
             }
           }
-          // array_merge($collabs, $collabsCc);
-          $collabs['cc'] = $collabsCc;
-          var_dump('sendcc is ' , $collabs);
+          $collabsCc['cc'] = $collabsCc;
         }
+
         if (isset($vars['bccs'])) {
           foreach ($vars['bccs'] as $uid) {
-            $user = User::lookup($uid);
-            // $collabs[] = $user->getEmail()->address;
-            $collabsBcc[] = $user->getEmail()->address;
-            if (($c2=$ticket->getThread()->addCollaborator($user,array('isactive'=>1), $errors))) {
-              $c2->setFlag(Collaborator::FLAG_ACTIVE, true); //adriane
-              $c2->setFlag(Collaborator::FLAG_CC, false);
-              $c2->save();
+            $bccuser = User::lookup($uid);
+
+            if ($bccuser && !$existing = Collaborator::getIdByUserId($bccuser->getId(), $ticket->getThreadId())) {
+              $collabsBcc[] = $bccuser;
+
+              if (($c2=$ticket->getThread()->addCollaborator($bccuser,array('isactive'=>1), $errors)))
+                $c2->setBcc();
             }
           }
-          // array_merge($collabs, $collabsBcc);
-          $collabs['bcc'] = $collabsBcc;
-          var_dump('sendbcc is ' , $collabs);
         }
 
         $vars['msgId']=$ticket->getLastMsgId();
@@ -3802,11 +3815,36 @@ implements RestrictedAccess, Threadable {
             $options = array(
                 'thread' => $message ?: $ticket->getThread(),
             );
-            // var_dump('msg2 is ' , $msg['body']); //adriane
+
             //adriane: ticket created on your behalf
-            if($vars['emailcollab'] == 1)
+            if($vars['emailcollab'] == 1) {
+
               $email->send($ticket->getOwner(), $msg['subj'], $msg['body'], $attachments,
-                  $options, $collabs);
+                  $options, $collabsCc);
+
+              if ($collabsBcc) {
+
+                foreach ($collabsBcc as $recipient) {
+                  if (($tpl=$dept->getTemplate())
+                      && ($bccmsg=$tpl->getNewTicketNoticeMsgTemplate())
+                      && ($email=$dept->getEmail())
+                  )
+                  $bccmsg = $ticket->replaceVars($bccmsg->asArray(),
+                      array(
+                          'message'   => $message,
+                          'signature' => $signature,
+                          'response'  => ($response) ? $response->getBody() : '',
+                          'recipient' => $ticket->getOwner(),
+                          'recipient.name.first' => $recipient->getName()->getFirst(),
+                      )
+                  );
+
+                  $email->send($recipient, $bccmsg['subj'], $bccmsg['body'], $attachments,
+                      $options);
+                }
+              }
+            }
+
             else
               $email->send($ticket->getOwner(), $msg['subj'], $msg['body'], $attachments,
                   $options);

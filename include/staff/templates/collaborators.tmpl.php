@@ -8,14 +8,14 @@ if($info && $info['msg']) {
 <?php
 if(($users=$thread->getCollaborators())) {?>
 <div id="manage_collaborators">
-<form method="post" class="collaborators" action="#thread/<?php echo $thread->getId(); ?>/collaborators">
+<form method="post" class="collaborators" onsubmit="refreshAndClose(<?php echo $thread->object_id; ?>);" action="#thread/<?php echo $thread->getId(); ?>/collaborators">
     <table border="0" cellspacing="1" cellpadding="1" width="100%">
     <?php
     foreach($users as $user) {
         $checked = $user->isActive() ? 'checked="checked"' : '';
         $cc = $user->isCc() ? 'selected="selected"' : '';
         $bcc = !$user->isCc() ? 'selected="selected"' : '';
-        // adriane
+
         echo sprintf('<tr>
                         <td>
                             <label class="inline checkbox">
@@ -167,4 +167,8 @@ $(function() {
     });
 
 });
+
+function refreshAndClose(tid) {
+            window.location.href = 'tickets.php?id=' + tid;
+}
 </script>

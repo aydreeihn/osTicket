@@ -302,8 +302,6 @@ if($_POST && !$errors):
                         $errors['err'] = sprintf('%s %s', __('Unable to change ticket ownership.'), __('Please try again!'));
                     }
                     break;
-                //adriane
-                // case 'unselect':
                 case 'addcc':
                     if (!$role->hasPerm(TicketModel::PERM_EDIT)) {
                         $errors['err']=__('Permission Denied. You are not allowed to add collaborators');

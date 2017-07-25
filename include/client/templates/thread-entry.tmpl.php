@@ -7,6 +7,12 @@ $avatar = '';
 if ($cfg->isAvatarsEnabled() && $user)
     $avatar = $user->getAvatar();
 ?>
+<?php
+  if ($entryTypes[$entry->type] == 'note') {
+    $entryTypes[$entry->type] = 'message';
+    $entry->type = 'M';
+  }
+?>
 
 <div class="thread-entry <?php echo $entryTypes[$entry->type]; ?> <?php if ($avatar) echo 'avatar'; ?>">
 <?php if ($avatar) { ?>

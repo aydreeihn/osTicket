@@ -183,16 +183,8 @@ if($ticket->isOverdue())
 
                     <?php
                     $recipients = __(' Manage Collaborators');
-                    // $recipients = __('Add Recipients');
-                    // if ($ticket->getThread()->getNumCollaborators())
-                    //     $recipients = sprintf(__('Recipients (%d of %d)'),
-                    //             $ticket->getThread()->getNumActiveCollaborators(),
-                    //             $ticket->getThread()->getNumCollaborators());
 
-                    //to have preview, just add preview to the class
-                    // echo sprintf('<a class="collaborators preview"
-
-                    echo sprintf('<a class="collaborators"
+                    echo sprintf('<a class="collaborators manage-collaborators"
                             href="#thread/%d/collaborators"><i class="icon-group"></i>%s</a>',
                             $ticket->getThreadId(),
                             $recipients);
@@ -322,14 +314,21 @@ if($ticket->isOverdue())
 <?php   } ?>
                                 </ul>
                             </div>
-                            <!-- adriane here -->
                             <?php
+                            if ($role->hasPerm(TicketModel::PERM_EDIT)) {
                             $numCollaborators = $ticket->getThread()->getNumCollaborators();
-                            echo sprintf('<a class="collaborators preview"
-                                    href="#thread/%d/collaborators"><i class="icon-group"></i> (%s)</a>',
+                             if ($ticket->getThread()->getNumCollaborators())
+                                $recipients = sprintf(__('%d'),
+                                        $numCollaborators);
+                            else
+                              $recipients = 0;
+
+                             echo sprintf('<span><a class="collaborators preview"
+                                    href="#thread/%d/collaborators"><span id="t%d-recipients"><i class="icon-group"></i> (%s)</span></a></span>',
                                     $ticket->getThreadId(),
-                                    $numCollaborators);
-                             ?>
+                                    $ticket->getThreadId(),
+                                    $recipients);
+                             }?>
 <?php                   } # end if ($user) ?>
                     </td>
                 </tr>
@@ -583,7 +582,6 @@ if ($errors['err'] && isset($_POST['a'])) {
             <?php
             }?>
            <tbody id="to_sec">
-           <!-- adriane from addresses -->
            <tr>
                <td width="120">
                    <label><strong><?php echo __('From'); ?>:</strong></label>
@@ -595,7 +593,6 @@ if ($errors['err'] && isset($_POST['a'])) {
                    ?>
                    <select id="from_name" name="from_name">
                      <?php
-                     var_dump('depts email id is ' , $dept->getEmail()->email_id);
                      $sql=' SELECT email_id, email, name, smtp_host '
                          .' FROM '.EMAIL_TABLE.' WHERE smtp_active = 1';
                      if(($res=db_query($sql)) && db_num_rows($res)) {
@@ -645,29 +642,16 @@ if ($errors['err'] && isset($_POST['a'])) {
                         style="display:<?php echo $ticket->getThread()->getNumCollaborators() ? 'inline-block': 'none'; ?>;"
                         >
                     <?php
-                    // $recipients = __('Manage Collaborators');
-                    // $recipients = __('Add Recipients');
-                    // if ($ticket->getThread()->getNumCollaborators())
-                    //     $recipients = sprintf(__('Recipients (%d of %d)'),
-                    //             $ticket->getThread()->getNumActiveCollaborators(),
-                    //             $ticket->getThread()->getNumCollaborators());
-                    //
-                    // echo sprintf('<span><a class="collaborators preview"
-                    //         href="#thread/%d/collaborators"><span id="t%d-recipients">%s</span></a></span>',
-                    //         $ticket->getThreadId(),
-                    //         $ticket->getThreadId(),
-                    //         $recipients);
                    ?>
                 </td>
              </tr>
-             <!-- adriane -->
              <?php $collaborators = $ticket->getThread()->getCollaborators();
              $cc_cids = array();
              $bcc_cids = array();
              foreach ($collaborators as $c) {
-               if($c->flags & Collaborator::FLAG_CC)
+               if ($c->flags & Collaborator::FLAG_CC && $c->flags & Collaborator::FLAG_ACTIVE)
                   $cc_cids[] = $c->user_id;
-                else {
+                elseif (!($c->flags & Collaborator::FLAG_CC) && $c->flags & Collaborator::FLAG_ACTIVE) {
                   $bcc_cids[] = $c->user_id;
                 }
              }
@@ -1012,7 +996,7 @@ if ($errors['err'] && isset($_POST['a'])) {
             __('Are you sure you want to DELETE %s?'), __('this ticket'));?></strong></font>
         <br><br><?php echo __('Deleted data CANNOT be recovered, including any associated attachments.');?>
     </p>
-    <!-- adriane -->
+    <!-- //mine: -->
     <p class="confirm-action" style="display:none;" id="collaborator-confirm">
         <?php echo sprintf(__('Are you sure you want to add this Collaborator?')); ?>
     </p>
@@ -1082,7 +1066,6 @@ $(function() {
 
 });
 
-// adriane
 $(function() {
     $("#cc_users2").select2({width: '350px'});
     $("#bcc_users2").select2({width: '350px'});
@@ -1094,9 +1077,9 @@ $(function() {
      var tid = <?php echo $ticket->getThreadId(); ?>;
 
     if(el.val().includes("NEW")) {
+      $("li[title='— Add New —']").remove();
       var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
        $.userLookup(url, function(user) {
-          console.log(user);
           if($('.dialog#confirm-action #collaborator-confirm').length) {
               $('.dialog#confirm-action #action').val('addcc');
               $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
@@ -1107,6 +1090,12 @@ $(function() {
               .parent('div').show().trigger('click');
           }
        });
+          //remove 'NEW' from the array
+          var arr = el.val();
+          var removeStr = "NEW";
+
+          arr.splice($.inArray(removeStr, arr),1);
+          $(this).val(arr);
      }
   });
 
@@ -1114,12 +1103,11 @@ $(function() {
       var el = $(this);
       var tid = <?php echo $ticket->getThreadId(); ?>;
 
-      console.log(el.val()[el.val().length - 1]);
       if(el.val().includes("NEW")) {
+        $("li[title='— Add New —']").remove();
         var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
          $.userLookup(url, function(user) {
             e.preventDefault();
-            console.log(user);
             if($('.dialog#confirm-action #collaborator-confirm').length) {
                 $('.dialog#confirm-action #action').val('addbcc');
                 $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
@@ -1130,20 +1118,39 @@ $(function() {
                 .parent('div').show().trigger('click');
             }
          });
+         //remove 'NEW' from the array
+         var arr = el.val();
+         var removeStr = "NEW";
+
+         arr.splice($.inArray(removeStr, arr),1);
+         $(this).val(arr);
       }
   });
 
   $('#cc_users2').on("select2:unselecting", function(e) {
       var confirmation = confirm(__("Are you sure you want to remove the collaborator from receiving this reply?"));
-      if (confirmation == false)
+      if (confirmation == false) {
+        $('#cc_users2').on("select2:opening", function(e) {
           return false;
+        });
+        return false;
+      }
+
  });
 
  $('#bcc_users2').on("select2:unselecting", function(e) {
      var confirmation = confirm(__("Are you sure you want to remove the collaborator from receiving this reply?"));
-     if (confirmation == false)
+     if (confirmation == false) {
+         $('#bcc_users2').on("select2:opening", function(e) {
+           return false;
+         });
          return false;
+       }
  });
+
+ // $("form").submit(function(event) { //adriane
+ //   event.preventDefault();
+ // });
 
 });
 </script>

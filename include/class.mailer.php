@@ -516,20 +516,16 @@ class Mailer {
               $email = preg_replace("/(\r\n|\r|\n)/s",'', trim($email));
               $cc[] = $email;
             }
-            // $cc = implode($cc);
-            // $cc = implode(', ',$cc);
             $to = $to.', '.implode(', ',$cc);
           }
 
           $bcc = array();
           if($collabs['bcc']) {
             foreach ($collabs['bcc'] as $email) {
-              $mime->addBcc($email);
+              // $mime->addBcc($email); //no bcc header written
               $email = preg_replace("/(\r\n|\r|\n)/s",'', trim($email));
               $bcc[] = $email;
             }
-            // $bcc = implode($bcc);
-            // $bcc = implode(', ',$bcc);
             $to = ', '.$to.', '.implode(', ',$bcc);
           }
         }

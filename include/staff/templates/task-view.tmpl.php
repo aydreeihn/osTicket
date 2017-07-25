@@ -384,6 +384,22 @@ if (!$ticket) { ?>
                                     $task->getThreadId(),
                                     $collaborators);
                            ?>
+
+                           <!-- adriane here -->
+                           <?php
+                          //  $numCollaborators = $task->getThread()->getNumCollaborators();
+                          //   if ($task->getThread()->getNumCollaborators())
+                          //      $recipients = sprintf(__('%d'),
+                          //              $numCollaborators);
+                          //  else
+                          //    $recipients = 0;
+                           //
+                          //   echo sprintf('<span><a class="collaborators preview"
+                          //          href="#thread/%d/collaborators"><span id="t%d-recipients"><i class="icon-group"></i> (%s)</span></a></span>',
+                          //          $task->getThreadId(),
+                          //          $task->getThreadId(),
+                          //          $recipients);
+                            ?>
                         </td>
                     </tr>
                 </table>
@@ -619,7 +635,32 @@ else
 <?php
 echo $reply_attachments_form->getMedia();
 ?>
+<div style="display:none;" class="dialog" id="confirm-action">
+    <h3><?php echo __('Please Confirm');?></h3>
+    <a class="close" href=""><i class="icon-remove-circle"></i></a>
+    <hr/>
 
+    <p class="confirm-action" style="display:none;" id="collaborator-confirm" name="a" value="addcc">
+        <?php echo sprintf(__('Are you sure you want to add this Collaborator?')); ?>
+    </p>
+    <div><?php echo __('Please confirm to continue.');?></div>
+    <form action="tasks.php?id=<?php echo $task->getId(); ?>" method="post" id="confirm-form" name="confirm-form">
+        <?php csrf_token(); ?>
+        <input type="hidden" name="id" value="<?php echo $task->getId(); ?>">
+        <input type="hidden" name="a" value="process">
+        <input type="hidden" name="do" id="action" value="">
+        <hr style="margin-top:1em"/>
+        <p class="full-width">
+            <span class="buttons pull-left">
+                <input type="button" value="<?php echo __('Cancel');?>" class="close">
+            </span>
+            <span class="buttons pull-right">
+                <input type="submit" value="<?php echo __('OK');?>">
+            </span>
+         </p>
+    </form>
+    <div class="clear"></div>
+</div>
 <script type="text/javascript">
 $(function() {
     $(document).off('.tasks-content');
@@ -673,5 +714,22 @@ $(function() {
     $('#ticket-tasks-count').html(<?php echo $ticket->getNumTasks(); ?>);
    <?php
     } ?>
+
+    //adriane
+    // $(document).on('submit', 'a.collaborators', function(e) {
+    //   var url = 'ajax.php/thread/' + <?php echo $task->getThreadId(); ?> + '/add-collaborator' ;
+    //   $.userLookup(url, function(user) {
+    //      console.log(user);
+        //  if($('.dialog#confirm-action #collaborator-confirm').length) {
+        //      $('.dialog#confirm-action #action').val('addcc');
+        //      $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
+        //      $('#overlay').show();
+        //      $('.dialog#confirm-action .confirm-action').hide();
+        //      $('.dialog#confirm-action p#collaborator-confirm')
+        //      .show()
+        //      .parent('div').show().trigger('click');
+        //  }
+    //   });
+    // });
 });
 </script>

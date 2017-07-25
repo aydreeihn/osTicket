@@ -33,6 +33,24 @@ class UserEmailModel extends VerySimpleModel {
     function __toString() {
         return (string) $this->address;
     }
+
+    static function getIdByEmail($email) {
+        $row = UserEmailModel::objects()
+            ->filter(array('address'=>$email))
+            ->values_flat('user_id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
+
+    static function getEmailById($id) {
+        $row = UserEmailModel::objects()
+            ->filter(array('user_id'=>$id))
+            ->values_flat('address')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
 }
 
 class UserModel extends VerySimpleModel {
@@ -148,7 +166,6 @@ class UserModel extends VerySimpleModel {
         return true;
     }
 
-    //adriane
     public function setFlag($flag, $val) {
 
         if ($val)
@@ -162,7 +179,6 @@ class UserModel extends VerySimpleModel {
     }
 
     protected function clearStatus($flag) {
-        //adriane
         return $this->set('status', $this->get('status') & ~$flag);
     }
 

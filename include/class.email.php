@@ -185,8 +185,6 @@ class Email extends VerySimpleModel {
 
     function sendAlert($to, $subject, $message, $attachments=null, $options=array(), $bcc=array()) {
         $options+= array('notice' => true);
-        //adriane: admin alert email
-        // var_dump('message is' , $message); //adriane
         return $this->send($to, $subject, $message, $attachments, $options, $bcc);
     }
 

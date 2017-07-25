@@ -117,7 +117,13 @@ class Thread extends VerySimpleModel {
     }
 
     function getActiveCollaborators() {
-        return $this->getCollaborators(array('isactive'=>1));
+        $collaborators = $this->getCollaborators();
+        $active = array();
+        foreach ($collaborators as $c) {
+          if ($c->isactive())
+            $active[] = $c;
+        }
+        return $active;
     }
 
     function getCollaborators($criteria=array()) {
@@ -128,8 +134,17 @@ class Thread extends VerySimpleModel {
         $collaborators = $this->collaborators
             ->filter(array('thread_id' => $this->getId()));
 
-        if (isset($criteria['isactive']))
-            $collaborators->filter(array('isactive' => $criteria['isactive']));
+        //adriane: how do I filter all active flags?
+        if (isset($criteria['isactive'])) {
+          // $collaborators->filter(array('isactive' => $criteria['isactive']));
+          // $collaborators->filter(array('flags' => $criteria['isactive']));
+          // $collaborators->filter(array('flags' => Collaborator::hasFlag(Collaborator::FLAG_ACTIVE)));
+          foreach ($collaborators as $key => $collab) {
+            if (!$collab->hasFlag(Collaborator::FLAG_ACTIVE))
+              $collaborators->exclude(array('user_id' => $collab->getUserId()));
+          }
+        }
+
 
         // TODO: sort by name of the user
         $collaborators->order_by('user__name');
@@ -176,13 +191,14 @@ class Thread extends VerySimpleModel {
             $collabs = array();
             foreach ($ids as $k => $cid) {
                 if (($c=Collaborator::lookup($cid))
-                        && ($c->getThreadId() == $this->getId()) //adriane
+                        && ($c->getThreadId() == $this->getId())
                         && $c->delete())
                      $collabs[] = $c;
+
+                 $this->getEvents()->log($this->getObject(), 'collab', array(
+                     'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
+                 ));
             }
-              $this->getEvents()->log($this->getObject(), 'collab', array(
-                  'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
-              ));
         }
 
         //statuses
@@ -195,7 +211,7 @@ class Thread extends VerySimpleModel {
                 'updated' => SqlFunction::NOW(),
                 'isactive' => 1,
             ));
-            //adriane
+
             foreach ($vars['cid'] as $c) {
               $collab = Collaborator::lookup($c);
               if(get_class($collab) == 'Collaborator') {
@@ -205,14 +221,12 @@ class Thread extends VerySimpleModel {
             }
         }
 
-        //adriane
         $inactive = $this->collaborators->filter(array(
             'thread_id' => $this->getId(),
             Q::not(array('id__in' => $cids ?: array(0)))
         ));
         if($inactive) {
           foreach ($inactive as $i) {
-            var_dump('i is' , $i);
             $i->setFlag(Collaborator::FLAG_ACTIVE, false);
             $i->save();
           }
@@ -222,14 +236,10 @@ class Thread extends VerySimpleModel {
           ));
         }
 
-        //adriane
-        //set flag for Cc or Bcc
         if($vars['recipientType']) {
-          // var_dump('hit');
           $combo = array_combine($vars['cid'], $vars['recipientType']);
           foreach ($combo as $id => $type) {
             $collab = Collaborator::lookup($id);
-            // var_dump('collab is ' , $collab);
             if(get_class($collab) == 'Collaborator') {
               if($type == 'Cc')
                 $collab->setFlag(Collaborator::FLAG_CC, true);
@@ -275,8 +285,17 @@ class Thread extends VerySimpleModel {
             include_once INCLUDE_DIR . 'class.thread_actions.php';
 
         $entries = $this->getEntries();
-        if ($type && is_array($type))
-            $entries->filter(array('type__in' => $type));
+
+        if ($type && is_array($type)) {
+          $visibility = Q::all(array('type__in' => $type));
+
+          if ($type['poster']) {
+            $visibility->add(array('poster__exact' => $type['poster']));
+            $visibility->ored = true;
+          }
+
+          $entries->filter($visibility);
+        }
 
         if ($options['sort'] && !strcasecmp($options['sort'], 'DESC'))
             $entries->order_by('-id');
@@ -363,6 +382,30 @@ class Thread extends VerySimpleModel {
             $vars['attachments'] = $mailinfo['attachments'];
 
         $body = $mailinfo['message'];
+
+        // extra handling for determining Cc and Bcc collabs
+        if ($mailinfo['email']) {
+          $staffSenderId = Staff::getIdByEmail($mailinfo['email']);
+
+          if (!$staffSenderId) {
+            $senderId = UserEmailModel::getIdByEmail($mailinfo['email']);
+            if ($senderId) {
+              $mailinfo['userId'] = $senderId;
+
+              if ($object instanceof Ticket && $senderId != $object->user_id && $senderId != $object->staff_id) {
+                $mailinfo['userClass'] = 'C';
+
+                $collaboratorId = Collaborator::getIdByUserId($senderId, $this->getId());
+                $collaborator = Collaborator::lookup($collaboratorId);
+
+                if ($collaborator && ($collaborator->isCc()))
+                  $vars['thread-type'] = 'M';
+                else
+                  $vars['thread-type'] = 'N';
+              }
+            }
+          }
+        }
 
         // Attempt to determine the user posting the entry and the
         // corresponding entry type by the information determined by the
@@ -1360,30 +1403,52 @@ implements TemplateVariable {
             'poster' => $poster,
             'source' => $vars['source'],
             'flags' => $vars['flags'] ?: 0,
+            'recipients' => $vars['recipients'],
         ));
 
-        //adriane: add recipients to thread entry
-        // var_dump('vars is ' , $vars);
+        //add recipients to thread entry
         $recipients = array();
+        $ticket = Thread::objects()->filter(array('id'=>$vars['threadId']))->values_flat('object_id')->first();
+        $ticketUser = Ticket::objects()->filter(array('ticket_id'=>$ticket[0]))->values_flat('user_id')->first();
+
+        //User
+        if ($ticketUser) {
+          $uEmail = UserEmailModel::getEmailById($ticketUser[0]);
+          $u = array();
+          $u[$ticketUser[0]] = $uEmail;
+          $recipients['to'] = $u;
+        }
+
+        if (Collaborator::getIdByUserId($vars['userId'], $vars['threadId']))
+          $entry->flags |= ThreadEntry::FLAG_COLLABORATOR;
+
+        //Cc collaborators
         if($vars['ccs'] && $vars['emailcollab'] == 1) {
           $cc = array();
           foreach ($vars['ccs'] as $c) {
             $u = User::lookup($c);
-            $email = $u->getEmail()->address;
-            $cc[$c] = $email;
+            if ($u) {
+              $email = $u->getEmail()->address;
+              $cc[$c] = $email;
+            }
           }
           $recipients['cc'] = $cc;
         }
+
+        //Bcc Collaborators
         if($vars['bccs'] && $vars['emailcollab'] == 1) {
           $bcc = array();
           foreach ($vars['bccs'] as $b) {
             $u = User::lookup($b);
-            $email = $u->getEmail()->address;
-            $bcc[$b] = $email;
+            if ($u) {
+              $email = $u->getEmail()->address;
+              $bcc[$b] = $email;
+            }
           }
           $recipients['bcc'] = $bcc;
         }
-        if ($recipients)
+
+        if (($vars['do'] == 'create' || $vars['emailreply'] == 1) && $recipients)
           $entry->recipients = json_encode($recipients);
 
 
@@ -1943,7 +2008,7 @@ class CollaboratorEvent extends ThreadEvent {
             }
             $desc = sprintf($base, implode(', ', $collabs));
             break;
-        case isset($data['add']):
+        case isset($data['add']) && $mode!=self::MODE_CLIENT:
             $base = __('<b>{somebody}</b> added <strong>%s</strong> as collaborators {timestamp}');
             $collabs = array();
             if ($data['add']) {
@@ -2360,7 +2425,6 @@ class MessageThreadEntry extends ThreadEntry {
                 && ($user = User::lookup($vars['userId'])))
             $vars['poster'] = (string) $user->getName();
 
-        $vars['recipients'] = $vars['recipients']; //adriane
 
         return parent::add($vars);
     }
