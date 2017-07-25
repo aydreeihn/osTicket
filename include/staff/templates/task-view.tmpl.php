@@ -719,7 +719,6 @@ $(function() {
     // $(document).on('submit', 'a.collaborators', function(e) {
     //   var url = 'ajax.php/thread/' + <?php echo $task->getThreadId(); ?> + '/add-collaborator' ;
     //   $.userLookup(url, function(user) {
-    //      console.log(user);
         //  if($('.dialog#confirm-action #collaborator-confirm').length) {
         //      $('.dialog#confirm-action #action').val('addcc');
         //      $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');

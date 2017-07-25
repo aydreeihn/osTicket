@@ -536,16 +536,12 @@ $(document).ready(function () {
 
 $("form").submit(function(event) {
   var value = $("#emailcollab").val();
-  // console.log('val is ' + value);
   if ($("#emailcollab").prop('checked')) {
-    // console.log('not null');
-    // console.log($("#bcc_users_open").val());
+    //do nothing
   }
   else {
-    // console.log('will null them');
     $("#cc_users_open").val(null).change();
     $("#bcc_users_open").val(null).change();
   }
-  // event.preventDefault();
 });
 </script>

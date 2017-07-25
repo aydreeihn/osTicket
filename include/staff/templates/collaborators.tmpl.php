@@ -112,7 +112,6 @@ $(function() {
         var tid = <?php echo $thread->getId(); ?>;
         var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
          $.userLookup(url, function(user) {
-            console.log(user);
             if($('.dialog#confirm-action #collaborator-confirm').length) {
                 $('.dialog#confirm-action #action').val('addcc');
                 $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
