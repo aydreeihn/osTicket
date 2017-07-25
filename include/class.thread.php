@@ -134,16 +134,8 @@ class Thread extends VerySimpleModel {
         $collaborators = $this->collaborators
             ->filter(array('thread_id' => $this->getId()));
 
-        //adriane: how do I filter all active flags?
-        if (isset($criteria['isactive'])) {
-          // $collaborators->filter(array('isactive' => $criteria['isactive']));
-          // $collaborators->filter(array('flags' => $criteria['isactive']));
-          // $collaborators->filter(array('flags' => Collaborator::hasFlag(Collaborator::FLAG_ACTIVE)));
-          foreach ($collaborators as $key => $collab) {
-            if (!$collab->hasFlag(Collaborator::FLAG_ACTIVE))
-              $collaborators->exclude(array('user_id' => $collab->getUserId()));
-          }
-        }
+        if (isset($criteria['isactive']))
+          $collaborators->filter(array('flags__hasbit'=>Collaborator::FLAG_ACTIVE));
 
 
         // TODO: sort by name of the user
