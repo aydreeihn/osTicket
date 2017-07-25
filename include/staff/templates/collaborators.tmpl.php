@@ -3,12 +3,18 @@
 <?php
 if($info && $info['msg']) {
     echo sprintf('<p id="msg_notice" style="padding-top:2px;">%s</p>', $info['msg']);
-} ?>
+}
+
+if ($thread->object_type = 'T')
+  $type = '\'tickets\'';
+if ($thread->object_type = 'A')
+  $type = '\'tasks\'';
+?>
 <hr/>
 <?php
 if(($users=$thread->getCollaborators())) {?>
 <div id="manage_collaborators">
-<form method="post" class="collaborators" onsubmit="refreshAndClose(<?php echo $thread->object_id; ?>);" action="#thread/<?php echo $thread->getId(); ?>/collaborators">
+<form method="post" class="collaborators" onsubmit="refreshAndClose(<?php echo $thread->object_id; ?>, <?php echo $type; ?>);" action="#thread/<?php echo $thread->getId(); ?>/collaborators">
     <table border="0" cellspacing="1" cellpadding="1" width="100%">
     <?php
     foreach($users as $user) {
@@ -167,7 +173,7 @@ $(function() {
 
 });
 
-function refreshAndClose(tid) {
-            window.location.href = 'tickets.php?id=' + tid;
+function refreshAndClose(tid, type) {
+  window.location.href = type + '.php?id=' + tid;
 }
 </script>
