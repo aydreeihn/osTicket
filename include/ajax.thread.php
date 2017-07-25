@@ -86,7 +86,7 @@ class ThreadAjaxAPI extends AjaxController {
     }
 
     //Collaborators utils
-    function addCollaborator($tid, $uid=0, $cc=false) {
+    function addCollaborator($tid, $uid=0) {
       //mine:
         global $thisstaff;
 
@@ -97,27 +97,11 @@ class ThreadAjaxAPI extends AjaxController {
 
         $user = $uid? User::lookup($uid) : null;
 
-        //If not a post then assume new collaborator form
-        // if(!$_POST)
-        //   return self::_addcollaborator($thread, $user, null, array(), $cc);
-
-        // $user = $form = null;
         $users = array();
         if (isset($_POST['id']) && $_POST['id']) //Existing user/
             $user =  User::lookup($_POST['id']);
 
         $errors = $info = array();
-        //I think this can be removed
-        if ($user) {
-            if (($_POST) && ($c=$thread->addCollaborator($user,array('isactive'=>1), $errors))) {
-
-                $c->setCollaboratorStatus($cc);
-
-                $info = array('msg' => sprintf(__('%s added as a collaborator'),
-                            Format::htmlchars($c->getName())));
-                return self::_collaborators($thread, $info);
-            }
-        }
 
         if($errors && $errors['err']) {
             $info +=array('error' => $errors['err']);
@@ -201,7 +185,7 @@ class ThreadAjaxAPI extends AjaxController {
         return $resp;
     }
 
-    function _addcollaborator($thread, $user=null, $form=null, $info=array(), $cc=null) {
+    function _addcollaborator($thread, $user=null, $form=null, $info=array()) {
         global $thisstaff;
 
         $info = array('title' => __('Add a collaborator'));

@@ -998,12 +998,12 @@ implements RestrictedAccess, Threadable {
         return $fields ? $fields[0] : null;
     }
 
-    function addCollaborator($user, $vars, &$errors, $event=true, $cc=null) {
+    function addCollaborator($user, $vars, &$errors, $event=true) {
 
         if (!$user || $user->getId() == $this->getOwnerId())
             return null;
 
-        if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event, $cc)) {
+        if ($c = $this->getThread()->addCollaborator($user, $vars, $errors, $event)) {
             $this->collaborators = null;
             $this->recipients = null;
         }
