@@ -143,13 +143,6 @@ implements EmailContact, ITicketUser {
             $this->flags &= ~$flag;
     }
 
-    public function setCollaboratorStatus($cc) {
-      if ($cc == 'true') //this is a string, not a boolean
-        $this->setCc();
-      else
-        $this->setBcc();
-    }
-
     public function setCc() {
       $this->setFlag(Collaborator::FLAG_ACTIVE, true);
       $this->setFlag(Collaborator::FLAG_CC, true);
