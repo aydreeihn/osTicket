@@ -42,15 +42,6 @@ class UserEmailModel extends VerySimpleModel {
 
         return $row ? $row[0] : 0;
     }
-
-    static function getEmailById($id) {
-        $row = UserEmailModel::objects()
-            ->filter(array('user_id'=>$id))
-            ->values_flat('address')
-            ->first();
-
-        return $row ? $row[0] : 0;
-    }
 }
 
 class UserModel extends VerySimpleModel {

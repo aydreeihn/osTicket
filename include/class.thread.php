@@ -1405,9 +1405,9 @@ implements TemplateVariable {
 
         //User
         if ($ticketUser) {
-          $uEmail = UserEmailModel::getEmailById($ticketUser[0]);
+          $uEmail = UserEmailModel::objects()->filter(array('user_id'=>$ticketUser[0]))->values_flat('address')->first();
           $u = array();
-          $u[$ticketUser[0]] = $uEmail;
+          $u[$ticketUser[0]] = $uEmail[0];
           $recipients['to'] = $u;
         }
 
