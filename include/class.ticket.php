@@ -2431,8 +2431,7 @@ implements RestrictedAccess, Threadable {
 
         $this->onMessage($message, ($autorespond && $alerts), $reopen); //must be called b4 sending alerts to staff.
 
-        if ($autorespond && $alerts && $cfg && $cfg->notifyCollabsONNewMessage())
-        {
+        if ($autorespond && $alerts && $cfg && $cfg->notifyCollabsONNewMessage()) {
           //adriane: when user replies, this is where collabs notified
           $this->notifyCollaborators($message, array('signature' => ''));
         }
@@ -2498,11 +2497,6 @@ implements RestrictedAccess, Threadable {
                 $email->sendAlert($staff, $alert['subj'], $alert['body'], null, $options);
                 $sentlist[] = $staff->getEmail();
             }
-
-              // user alert may need to go here
-              // $email->send($user, $msg['subj'], $msg['body'], $attachments,
-              //     $options);
-
         }
         return $message;
     }
@@ -2583,7 +2577,7 @@ implements RestrictedAccess, Threadable {
     function postReply($vars, &$errors, $alert=true, $claim=true) {
         global $thisstaff, $cfg;
 
-        if($collabs = $this->getRecipients()) {
+        if ($collabs = $this->getRecipients()) {
           $collabIds = array();
           foreach ($collabs as $collab) {
             $collabIds[] = $collab->user_id;

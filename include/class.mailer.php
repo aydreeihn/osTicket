@@ -518,16 +518,6 @@ class Mailer {
             }
             $to = $to.', '.implode(', ',$cc);
           }
-
-          $bcc = array();
-          if($collabs['bcc']) {
-            foreach ($collabs['bcc'] as $email) {
-              // $mime->addBcc($email); //no bcc header written
-              $email = preg_replace("/(\r\n|\r|\n)/s",'', trim($email));
-              $bcc[] = $email;
-            }
-            $to = ', '.$to.', '.implode(', ',$bcc);
-          }
         }
         $to = ltrim($to, ', ');
 

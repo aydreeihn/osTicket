@@ -183,9 +183,9 @@ class Email extends VerySimpleModel {
         return $this->send($to, $subject, $message, $attachments, $options);
     }
 
-    function sendAlert($to, $subject, $message, $attachments=null, $options=array(), $bcc=array()) {
+    function sendAlert($to, $subject, $message, $attachments=null, $options=array()) {
         $options+= array('notice' => true);
-        return $this->send($to, $subject, $message, $attachments, $options, $bcc);
+        return $this->send($to, $subject, $message, $attachments, $options);
     }
 
    function delete() {
