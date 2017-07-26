@@ -3713,6 +3713,36 @@ implements RestrictedAccess, Threadable {
         if (!($ticket=self::create($create_vars, $errors, 'staff', false)))
             return false;
 
+        $collabs = array();
+        $collabsCc = array();
+        $collabsBcc = array();
+        if (isset($vars['ccs'])) {
+          foreach ($vars['ccs'] as $uid) {
+            $ccuser = User::lookup($uid);
+
+            if ($ccuser && !$existing = Collaborator::getIdByUserId($ccuser->getId(), $ticket->getThreadId())) {
+                $collabsCc[] = $ccuser->getEmail()->address;
+
+              if (($c2=$ticket->getThread()->addCollaborator($ccuser,array('isactive'=>1), $errors)))
+                    $c2->setCc();
+            }
+          }
+          $collabsCc['cc'] = $collabsCc;
+        }
+
+        if (isset($vars['bccs'])) {
+          foreach ($vars['bccs'] as $uid) {
+            $bccuser = User::lookup($uid);
+
+            if ($bccuser && !$existing = Collaborator::getIdByUserId($bccuser->getId(), $ticket->getThreadId())) {
+              $collabsBcc[] = $bccuser;
+
+              if (($c2=$ticket->getThread()->addCollaborator($bccuser,array('isactive'=>1), $errors)))
+                $c2->setBcc();
+            }
+          }
+        }
+
         $vars['msgId']=$ticket->getLastMsgId();
 
         // Effective role for the department
@@ -3777,50 +3807,30 @@ implements RestrictedAccess, Threadable {
             );
 
             //adriane: ticket created on your behalf
-            if ($vars['emailcollab'] == 1) {
-              //Cc collaborators
-              if($vars['ccs']) {
-                $collabsCc = array();
-                foreach ($vars['ccs'] as $uid) {
-                  $recipient = User::lookup($uid);
-                  if ($recipient && !$existing = Collaborator::getIdByUserId($recipient->getId(), $ticket->getThreadId())) {
-                    $collabsCc[] = $recipient->getEmail()->address;
+            if($vars['emailcollab'] == 1) {
 
-                    if (($c2=$ticket->getThread()->addCollaborator($recipient,array('isactive'=>1), $errors)))
-                      $c2->setCc();
-                  }
-                }
-                $collabsCc['cc'] = $collabsCc;
-                $email->send($ticket->getOwner(), $msg['subj'], $msg['body'], $attachments,
-                      $options, $collabsCc);
-              }
+              $email->send($ticket->getOwner(), $msg['subj'], $msg['body'], $attachments,
+                  $options, $collabsCc);
 
-              //Bcc Collaborators
-              if($vars['bccs']) {
-                foreach ($vars['bccs'] as $uid) {
-                  $recipient = User::lookup($uid);
+              if ($collabsBcc) {
 
-                   if ($recipient && !$existing = Collaborator::getIdByUserId($recipient->getId(), $ticket->getThreadId())) {
-                      if (($c2=$ticket->getThread()->addCollaborator($recipient,array('isactive'=>1), $errors)))
-                        $c2->setBcc();
-                    }
-
-                      if (($tpl=$dept->getTemplate())
-                          && ($bccmsg=$tpl->getNewTicketNoticeMsgTemplate())
-                          && ($email=$dept->getEmail())
+                foreach ($collabsBcc as $recipient) {
+                  if (($tpl=$dept->getTemplate())
+                      && ($bccmsg=$tpl->getNewTicketNoticeMsgTemplate())
+                      && ($email=$dept->getEmail())
+                  )
+                  $bccmsg = $ticket->replaceVars($bccmsg->asArray(),
+                      array(
+                          'message'   => $message,
+                          'signature' => $signature,
+                          'response'  => ($response) ? $response->getBody() : '',
+                          'recipient' => $ticket->getOwner(),
+                          'recipient.name.first' => $recipient->getName()->getFirst(),
                       )
-                      $bccmsg = $ticket->replaceVars($bccmsg->asArray(),
-                          array(
-                              'message'   => $message,
-                              'signature' => $signature,
-                              'response'  => ($response) ? $response->getBody() : '',
-                              'recipient' => $ticket->getOwner(),
-                              'recipient.name.first' => $recipient->getName()->getFirst(),
-                          )
-                      );
+                  );
 
-                      $email->send($recipient, $bccmsg['subj'], $bccmsg['body'], $attachments,
-                          $options);
+                  $email->send($recipient, $bccmsg['subj'], $bccmsg['body'], $attachments,
+                      $options);
                 }
               }
             }
