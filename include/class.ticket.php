@@ -1502,7 +1502,6 @@ implements RestrictedAccess, Threadable {
 
         if (!$entry instanceof ThreadEntry
             || !($recipients=$this->getRecipients())
-            // || !($recipients=$this->getThread()->getActiveCollaborators())
             || !($dept=$this->getDept())
             || !($tpl=$dept->getTemplate())
             || !($msg=$tpl->getActivityNoticeMsgTemplate())
@@ -1588,7 +1587,7 @@ implements RestrictedAccess, Threadable {
 
         $collaborators['cc'] = $collaborators;
 
-        // //adriane: collaborator email sent out
+        //adriane: collaborator email sent out
         $email->send('', $cnotice['subj'], $cnotice['body'], $attachments,
             $options, $collaborators);
     }
@@ -2699,43 +2698,40 @@ implements RestrictedAccess, Threadable {
             $attachments = $cfg->emailAttachments()?$response->getAttachments():array();
           }
 
-            $collabsCc = array();
-            $collabsBcc = array();
-            if (isset($vars['ccs'])) {
+          if ($vars['emailcollab'] == 1) {
+            //Cc collaborators
+            if($vars['ccs']) {
+              $collabsCc = array();
               foreach ($vars['ccs'] as $uid) {
-                $collabUser = User::lookup($uid);
-                $collabsCc[] = $collabUser->getEmail()->address;
+                $recipient = User::lookup($uid);
+                if ($recipient) {
+                  $ccEmail = $recipient->getEmail()->address;
+                  $collabsCc[] = $ccEmail;
+                }
               }
               $collabsCc['cc'] = $collabsCc;
-            }
-            if (isset($vars['bccs'])) {
-              foreach ($vars['bccs'] as $uid) {
-                $collabUser = User::lookup($uid);
-                $collabsBcc[] = $collabUser;
-              }
-            }
-
-            if ($vars['emailcollab'] == 1) {
-                $email->send($user, $msg['subj'], $msg['body'], $attachments,
+              $email->send($user, $msg['subj'], $msg['body'], $attachments,
                     $options, $collabsCc);
+            }
 
-              if ($collabsBcc) {
-                foreach ($collabsBcc as $recipient) {
-                  if (($bcctpl = $dept->getTemplate())
-                      && ($bccmsg=$bcctpl->getReplyMsgTemplate())
-                  )
-                    $bccmsg = $this->replaceVars($bccmsg->asArray(),
-                        $variables + array('recipient' => $user, 'recipient.name.first' => $recipient->getName()->getFirst())
-                    );
+            //Bcc Collaborators
+            if($vars['bccs']) {
+              foreach ($vars['bccs'] as $uid) {
+                $recipient = User::lookup($uid);
+                if (($bcctpl = $dept->getTemplate()) && ($bccmsg=$bcctpl->getReplyMsgTemplate())) {
+                  $bccmsg = $this->replaceVars($bccmsg->asArray(), $variables +
+                      array('recipient' => $user, 'recipient.name.first' => $recipient->getName()->getFirst())
+                  );
+
                   $email->send($recipient, $bccmsg['subj'], $bccmsg['body'], $attachments,
                       $options);
                 }
               }
-
             }
-            else
-              $email->send($user, $msg['subj'], $msg['body'], $attachments,
-                  $options);
+          }
+          else
+            $email->send($user, $msg['subj'], $msg['body'], $attachments,
+                $options);
 
         return $response;
     }
