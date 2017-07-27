@@ -5,9 +5,9 @@ if($info && $info['msg']) {
     echo sprintf('<p id="msg_notice" style="padding-top:2px;">%s</p>', $info['msg']);
 }
 
-if ($thread->object_type = 'T')
+if ($thread->object_type == 'T')
   $type = '\'tickets\'';
-if ($thread->object_type = 'A')
+if ($thread->object_type == 'A')
   $type = '\'tasks\'';
 ?>
 <hr/>

@@ -2682,8 +2682,9 @@ implements RestrictedAccess, Threadable {
         );
 
         $user = $this->getOwner();
-        if (($email=$dept->getEmail())
-            && ($tpl = $dept->getTemplate())
+        if (($email=$email)
+            && ($emailDept = $email->getDept())
+            && ($tpl = $emailDept->getTemplate())
             && ($msg=$tpl->getReplyMsgTemplate())
         ) {
             $msg = $this->replaceVars($msg->asArray(),
@@ -2712,7 +2713,9 @@ implements RestrictedAccess, Threadable {
             if($vars['bccs']) {
               foreach ($vars['bccs'] as $uid) {
                 $recipient = User::lookup($uid);
-                if (($bcctpl = $dept->getTemplate()) && ($bccmsg=$bcctpl->getReplyMsgTemplate())) {
+                if (($emailDept = $email->getDept())
+                    && ($bcctpl = $emailDept->getTemplate())
+                    && ($bccmsg=$bcctpl->getReplyMsgTemplate())) {
                   $bccmsg = $this->replaceVars($bccmsg->asArray(), $variables +
                       array('recipient' => $user, 'recipient.name.first' => $recipient->getName()->getFirst())
                   );
