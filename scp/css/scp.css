@@ -720,6 +720,10 @@ table.fixed > tr > td + td:not([width]) {
     width: auto;
 }
 
+tr.no_border > td, td.no_border{
+  border-style:hidden;
+}
+
 td.multi-line {
     vertical-align:top;
     padding-top: 0.4em;

@@ -116,58 +116,64 @@ if ($_POST)
         </tr>
         <?php
         } ?>
-            <tr>
-              <td width="120">
-                  <label><strong><?php echo __('Collaborators'); ?>:</strong></label>
-              </td>
-              <td>
-                  <input type='checkbox' value='1' name="emailcollab"
-                  id="emailcollab"
-                      <?php echo ((!$info['emailcollab'] && !$errors) || isset($info['emailcollab']))?'checked="checked"':''; ?>
+          <tr>
+            <td>
+              <table border="0">
+                <tr class="no_border">
+                  <td width="120">
+                      <label><strong><?php echo __('Collaborators'); ?>:</strong></label>
+                  </td>
+                  <td>
+                      <input type='checkbox' value='1' name="emailcollab"
+                      id="emailcollab"
+                          <?php echo ((!$info['emailcollab'] && !$errors) || isset($info['emailcollab']))?'checked="checked"':''; ?>
 
-                      >
-                  <?php
-                 ?>
-              </td>
-             </tr>
-             <tr id="ccRow">
-               <td width="160"><?php echo __('Cc'); ?>:</td>
-               <td>
-                   <select name="ccs[]" id="cc_users_open" multiple="multiple"
-                       data-placeholder="<?php echo __('Select Contacts'); ?>">
-                       <option value=""></option>
-                       <?php
-                       $users = User::objects();
-                       foreach ($users as $u) {
-                         if($user && $u->id != $user->getId()) {
-                       ?>
-                       <option value="<?php echo $u->id; ?>"
-                           ><?php echo $u->getName(); ?>
-                       </option>
-                           <?php } } ?>
-                   </select>
-                   <br/><span class="error"><?php echo $errors['ccs']; ?></span>
-               </td>
-             </tr>
-             <tr id="bccRow">
-               <td width="160"><?php echo __('Bcc'); ?>:</td>
-               <td>
-                   <select name="bccs[]" id="bcc_users_open" multiple="multiple"
-                       data-placeholder="<?php echo __('Select Contacts'); ?>">
-                       <option value=""></option>
-                       <?php
-                       $users = User::objects();
-                       foreach ($users as $u) {
-                         if($user && $u->id != $user->getId()) {
-                       ?>
-                       <option value="<?php echo $u->id; ?>"
-                           ><?php echo $u->getName(); ?>
-                       </option>
-                           <?php } } ?>
-                   </select>
-                   <br/><span class="error"><?php echo $errors['ccs']; ?></span>
-               </td>
-             </tr>
+                          >
+                      <?php
+                     ?>
+                  </td>
+                </tr>
+                <tr class="no_border" id="ccRow">
+                  <td width="160"><?php echo __('Cc'); ?>:</td>
+                  <td>
+                      <select name="ccs[]" id="cc_users_open" multiple="multiple"
+                          data-placeholder="<?php echo __('Select Contacts'); ?>">
+                          <option value=""></option>
+                          <?php
+                          $users = User::objects();
+                          foreach ($users as $u) {
+                            if($user && $u->id != $user->getId()) {
+                          ?>
+                          <option value="<?php echo $u->id; ?>"
+                              ><?php echo $u->getName(); ?>
+                          </option>
+                              <?php } } ?>
+                      </select>
+                      <br/><span class="error"><?php echo $errors['ccs']; ?></span>
+                  </td>
+                </tr>
+                <tr class="no_border" id="bccRow">
+                  <td width="160"><?php echo __('Bcc'); ?>:</td>
+                  <td>
+                      <select name="bccs[]" id="bcc_users_open" multiple="multiple"
+                          data-placeholder="<?php echo __('Select Contacts'); ?>">
+                          <option value=""></option>
+                          <?php
+                          $users = User::objects();
+                          foreach ($users as $u) {
+                            if($user && $u->id != $user->getId()) {
+                          ?>
+                          <option value="<?php echo $u->id; ?>"
+                              ><?php echo $u->getName(); ?>
+                          </option>
+                              <?php } } ?>
+                      </select>
+                      <br/><span class="error"><?php echo $errors['ccs']; ?></span>
+                  </td>
+                </tr>
+              </table>
+          </td>
+        </tr>
     </tbody>
     <tbody>
         <tr>
