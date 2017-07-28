@@ -1,6 +1,6 @@
 <?php
 global $cfg;
-$entryTypes = array('M'=>'message', 'R'=>'response', 'N'=>'note');
+$entryTypes = array('M'=>'message', 'R'=>'response', 'N'=>'note', 'B' => 'bccmessage');
 $user = $entry->getUser() ?: $entry->getStaff();
 $name = $user ? $user->getName() : $entry->poster;
 $avatar = '';
@@ -9,14 +9,14 @@ if ($cfg->isAvatarsEnabled() && $user)
 ?>
 <?php
   if ($entryTypes[$entry->type] == 'note') {
-    $entryTypes[$entry->type] = 'message';
-    $entry->type = 'M';
+    $entryTypes[$entry->type] = 'bccmessage';
+    $entry->type = 'B';
   }
 ?>
 
 <div class="thread-entry <?php echo $entryTypes[$entry->type]; ?> <?php if ($avatar) echo 'avatar'; ?>">
 <?php if ($avatar) { ?>
-    <span class="<?php echo ($entry->type == 'M') ? 'pull-left' : 'pull-right'; ?> avatar">
+    <span class="<?php echo ($entry->type == 'M' || $entry->type == 'B') ? 'pull-left' : 'pull-right'; ?> avatar">
 <?php echo $avatar; ?>
     </span>
 <?php } ?>
