@@ -473,7 +473,6 @@ class Thread extends VerySimpleModel {
         switch ($vars['thread-type']) {
         case 'M':
             $vars['message'] = $body;
-
             if ($object instanceof Threadable)
                 return $object->postThreadEntry('M', $vars);
             elseif ($this instanceof ObjectThread)
@@ -482,7 +481,6 @@ class Thread extends VerySimpleModel {
 
         case 'N':
             $vars['note'] = $body;
-
             if ($object instanceof Threadable)
                 return $object->postThreadEntry('N', $vars);
             elseif ($this instanceof ObjectThread)
@@ -1452,7 +1450,6 @@ implements TemplateVariable {
 
         if (($vars['do'] == 'create' || $vars['emailreply'] == 1) && $recipients)
           $entry->recipients = json_encode($recipients);
-
 
         if ($entry->format == 'html')
             // The current codebase properly balances html
@@ -2426,7 +2423,6 @@ class MessageThreadEntry extends ThreadEntry {
                 && $vars['userId']
                 && ($user = User::lookup($vars['userId'])))
             $vars['poster'] = (string) $user->getName();
-
 
         return parent::add($vars);
     }

@@ -60,7 +60,6 @@ if(($users=$thread->getCollaborators())) {?>
                     $bcc,
                     $user->getId(),
                     $user->getId());
-                    // Format::htmlchars($user->getEmail());
     }
     ?>
     <td>
