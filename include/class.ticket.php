@@ -2354,6 +2354,63 @@ implements RestrictedAccess, Threadable {
             $vars['ip_address'] = $_SERVER['REMOTE_ADDR'];
 
         $errors = array();
+
+        $hdr = Mail_parse::splitHeaders($vars['header'], true);
+
+        $existingCollab = Collaborator::getIdByUserId($vars['userId'], $this->getThreadId());
+
+        if (($vars['userId'] != $this->user_id) && (!$existingCollab)) {
+          if ($vars['userId'] == 0) {
+            foreach (array('from', 'From') as $k) {
+              if (isset($hdr[$k]) && $hdr[$k]) {
+                $startsAt = strpos($hdr[$k], "<") + strlen("<");
+                $endsAt = strpos($hdr[$k], ">", $startsAt);
+                $email = substr($hdr[$k], $startsAt, $endsAt - $startsAt);
+                if (!$existinguser = User::lookupByEmail($email)) {
+                  $name = substr($hdr[$k], 0, strpos($hdr[$k], "<"));
+                  $user = User::fromVars(array('name' => $name, 'email' => $email));
+                  $vars['userId'] = $user->getId();
+                }
+              }
+            }
+          }
+          else {
+            $user = User::lookup($vars['userId']);
+          }
+          $c = $this->getThread()->addCollaborator($user,array('isactive'=>1), $errors);
+
+          foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
+            if ($user && isset($hdr[$k]) && $hdr[$k]) {
+              $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
+            }
+          }
+          if (count($addresses) > 1) {
+            $isMsg = true;
+            $c->setCc();
+          }
+          else
+            $c->setBcc();
+        }
+        else {
+          $c = Collaborator::lookup($existingCollab);
+          if ($c && !$c->isCc()) {
+            foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
+              if (isset($hdr[$k]) && $hdr[$k]) {
+                $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
+              }
+            }
+            if (count($addresses) > 1) {
+              $isMsg = true;
+              $c->setCc();
+            }
+            else
+              $c->setBcc();
+          }
+        }
+
+        if ($vars['userId'] == $this->user_id)
+          $isMsg = true;
+
         //lookup user by userId. if they are bcc in thread, post internal note
         if($collabs = $this->getRecipients()) {
           foreach ($collabs as $collab) {
@@ -2706,6 +2763,10 @@ implements RestrictedAccess, Threadable {
               $collabsCc['cc'] = $collabsCc;
               $email->send($user, $msg['subj'], $msg['body'], $attachments,
                     $options, $collabsCc);
+            }
+            else {
+              $email->send($user, $msg['subj'], $msg['body'], $attachments,
+                  $options);
             }
 
             //Bcc Collaborators
