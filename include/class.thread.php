@@ -677,6 +677,7 @@ implements TemplateVariable {
     var $_actions;
     var $is_autoreply;
     var $is_bounce;
+    var $_posterType;
 
     static protected $perms = array(
         self::PERM_EDIT => array(
@@ -741,6 +742,16 @@ implements TemplateVariable {
 
     function getPoster() {
         return $this->poster;
+    }
+
+    function getPosterType() {
+      if ($this->staff_id)
+        $this->posterType = 'Agent';
+      else {
+        $this->posterType = 'User';
+      }
+
+      return $this->posterType;
     }
 
     function getTitle() {

@@ -2007,7 +2007,6 @@ implements RestrictedAccess, Threadable {
     function replaceVars($input, $vars = array()) {
         global $ost;
 
-        //try to call getrecips with bool to get rid of bcc
         $recipients = $this->getRecipients(true);
 
         $vars = array_merge($vars, array('ticket' => $this));
@@ -2378,9 +2377,8 @@ implements RestrictedAccess, Threadable {
           $c = $this->getThread()->addCollaborator($user,array('isactive'=>1), $errors);
 
           foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
-            if ($user && isset($hdr[$k]) && $hdr[$k]) {
+            if ($user && isset($hdr[$k]) && $hdr[$k])
               $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
-            }
           }
           if (count($addresses) > 1) {
             $isMsg = true;
@@ -2393,16 +2391,13 @@ implements RestrictedAccess, Threadable {
           $c = Collaborator::lookup($existingCollab);
           if ($c && !$c->isCc()) {
             foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
-              if (isset($hdr[$k]) && $hdr[$k]) {
+              if (isset($hdr[$k]) && $hdr[$k])
                 $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
-              }
             }
             if (count($addresses) > 1) {
               $isMsg = true;
               $c->setCc();
             }
-            else
-              $c->setBcc();
           }
         }
 
