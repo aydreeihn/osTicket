@@ -1369,7 +1369,6 @@ implements TemplateVariable {
         if (!$vars['threadId'] || !$vars['type'])
             return false;
 
-
         if (!$vars['body'] instanceof ThreadEntryBody) {
             if ($cfg->isRichTextEnabled())
                 $vars['body'] = new HtmlThreadEntryBody($vars['body']);
@@ -2624,14 +2623,12 @@ implements TemplateVariable {
     }
 
     function addNote($vars, &$errors=array()) {
-
         //Add ticket Id.
         $vars['threadId'] = $this->getId();
         return NoteThreadEntry::add($vars, $errors);
     }
 
     function addMessage($vars, &$errors) {
-
         $vars['threadId'] = $this->getId();
         $vars['staffId'] = 0;
 

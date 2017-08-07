@@ -41,7 +41,6 @@ $reply_attachments_form = new SimpleForm(array(
 
 //At this stage we know the access status. we can process the post.
 if($_POST && !$errors):
-
     if ($task) {
         //More coffee please.
         $errors=array();

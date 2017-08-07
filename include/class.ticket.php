@@ -1681,7 +1681,6 @@ implements RestrictedAccess, Threadable {
         global $cfg, $thisstaff;
 
         //TODO: do some shit
-
         if (!$alert // Check if alert is enabled
             || !$cfg->alertONNewActivity()
             || !($dept=$this->getDept())
@@ -2356,7 +2355,6 @@ implements RestrictedAccess, Threadable {
         $errors = array();
 
         $hdr = Mail_parse::splitHeaders($vars['header'], true);
-
         $existingCollab = Collaborator::getIdByUserId($vars['userId'], $this->getThreadId());
 
         if (($vars['userId'] != $this->user_id) && (!$existingCollab)) {
@@ -2418,11 +2416,6 @@ implements RestrictedAccess, Threadable {
               $user = User::lookup($vars['userId']);
               $vars['note'] = $vars['message'];
 
-              $hdr = Mail_parse::splitHeaders($vars['header'], true);
-              foreach (array('Cc', 'CC', 'Bcc', 'BCC') as $k) {
-                if (isset($hdr[$k]) && $hdr[$k] && ($addresses=Mail_Parse::parseAddressList($hdr[$k])))
-                  $isMsg = true;
-              }
               //post internal note
               if (!$isMsg) {
                 return $this->postNote($vars,$errors, $user, true);
@@ -2725,10 +2718,8 @@ implements RestrictedAccess, Threadable {
                 default:
                     $from_name =  $email->getName();
             }
-
             if ($from_name)
                 $options += array('from_name' => $from_name);
-
         }
 
         $variables = array(
