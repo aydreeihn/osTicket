@@ -60,7 +60,6 @@ implements EmailContact, ITicketUser, TemplateVariable {
             $qstr = array();
             if ($cfg && $cfg->isAuthTokenEnabled()
                     && ($ticket=$this->getTicket())
-                    //get num recips here
                     && !$ticket->getThread()->getNumCollaborators()) {
                       $qstr['auth'] = $ticket->getAuthToken($this);
                       return sprintf('%s/view.php?%s',

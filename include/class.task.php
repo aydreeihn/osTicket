@@ -1155,7 +1155,6 @@ class Task extends TaskModel implements RestrictedAccess, Threadable {
             $this->collaborators = null;
             $this->recipients = null;
         }
-
         return $c;
     }
 

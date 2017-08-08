@@ -159,6 +159,18 @@ implements EmailContact, ITicketUser {
         return !!($this->flags & self::FLAG_CC);
     }
 
+    function getCollabList($collabs) {
+      $collabList = array();
+      foreach ($collabs as $c) {
+        $u = User::lookup($c);
+        if ($u) {
+          $email = $u->getEmail()->address;
+          $collabList[$c] = $email;
+        }
+      }
+      return $collabList;
+    }
+
     static function create($vars=false) {
         $inst = new static($vars);
         $inst->created = SqlFunction::NOW();

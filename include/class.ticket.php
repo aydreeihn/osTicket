@@ -2357,7 +2357,6 @@ implements RestrictedAccess, Threadable {
           if ($vars['userId'] == 0) {
             $emailStream = '<<<EOF' . $vars['header'] . 'EOF';
             $parsed = EmailDataParser::parse($emailStream);
-            $name = $parsed['name'];
             $email = $parsed['email'];
             if (!$existinguser = User::lookupByEmail($email)) {
               $name = $parsed['name'];
@@ -2365,9 +2364,9 @@ implements RestrictedAccess, Threadable {
               $vars['userId'] = $user->getId();
             }
           }
-          else {
+          else
             $user = User::lookup($vars['userId']);
-          }
+
           $c = $this->getThread()->addCollaborator($user,array('isactive'=>1), $errors);
 
           foreach (array('To', 'TO', 'Cc', 'CC') as $k) {
@@ -2617,9 +2616,8 @@ implements RestrictedAccess, Threadable {
 
         if ($collabs = $this->getRecipients()) {
           $collabIds = array();
-          foreach ($collabs as $collab) {
+          foreach ($collabs as $collab)
             $collabIds[] = $collab->user_id;
-          }
         }
 
         $ticket = Ticket::lookup($vars['id']);
@@ -2678,12 +2676,8 @@ implements RestrictedAccess, Threadable {
         if (!$alert)
             return $response;
 
-
-        //look for email id here
-        if ($vars['from_name'])
-          $email = Email::lookup($vars['from_name']);
-        else
-          $email = $dept->getEmail();
+        //allow agent to send from different dept email
+        $vars['from_name'] ? $email = Email::lookup($vars['from_name']) : $email = $dept->getEmail();
 
         $options = array('thread'=>$response);
         $signature = $from_name = '';
@@ -2732,13 +2726,7 @@ implements RestrictedAccess, Threadable {
             //Cc collaborators
             if($vars['ccs']) {
               $collabsCc = array();
-              foreach ($vars['ccs'] as $uid) {
-                $recipient = User::lookup($uid);
-                if ($recipient) {
-                  $ccEmail = $recipient->getEmail()->address;
-                  $collabsCc[] = $ccEmail;
-                }
-              }
+              $collabsCc[] = Collaborator::getCollabList($vars['ccs']);
               $collabsCc['cc'] = $collabsCc;
               $email->send($user, $msg['subj'], $msg['body'], $attachments,
                     $options, $collabsCc);
@@ -3754,7 +3742,6 @@ implements RestrictedAccess, Threadable {
         if (!($ticket=self::create($create_vars, $errors, 'staff', false)))
             return false;
 
-        $collabs = array();
         $collabsCc = array();
         $collabsBcc = array();
         if (isset($vars['ccs'])) {

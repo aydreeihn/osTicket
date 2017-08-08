@@ -233,11 +233,8 @@ class Thread extends VerySimpleModel {
           foreach ($combo as $id => $type) {
             $collab = Collaborator::lookup($id);
             if(get_class($collab) == 'Collaborator') {
-              if($type == 'Cc')
-                $collab->setFlag(Collaborator::FLAG_CC, true);
-              else {
+              $type == 'Cc' ? $collab->setFlag(Collaborator::FLAG_CC, true) :
                 $collab->setFlag(Collaborator::FLAG_CC, false);
-              }
               $collab->save();
             }
           }
@@ -1421,27 +1418,13 @@ implements TemplateVariable {
 
         //Cc collaborators
         if($vars['ccs'] && $vars['emailcollab'] == 1) {
-          $cc = array();
-          foreach ($vars['ccs'] as $c) {
-            $u = User::lookup($c);
-            if ($u) {
-              $email = $u->getEmail()->address;
-              $cc[$c] = $email;
-            }
-          }
+          $cc = Collaborator::getCollabList($vars['ccs']);
           $recipients['cc'] = $cc;
         }
 
         //Bcc Collaborators
         if($vars['bccs'] && $vars['emailcollab'] == 1) {
-          $bcc = array();
-          foreach ($vars['bccs'] as $b) {
-            $u = User::lookup($b);
-            if ($u) {
-              $email = $u->getEmail()->address;
-              $bcc[$b] = $email;
-            }
-          }
+          $bcc = Collaborator::getCollabList($vars['bccs']);
           $recipients['bcc'] = $bcc;
         }
 
