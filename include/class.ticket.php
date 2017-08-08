@@ -1496,7 +1496,6 @@ implements RestrictedAccess, Threadable {
      * Notify collaborators on response or new message
      *
      */
-     //adriane: this is needed
     function notifyCollaborators($entry, $vars = array()) {
         global $cfg;
 
@@ -1551,13 +1550,11 @@ implements RestrictedAccess, Threadable {
         $collaborators = array();
         $collabsCc = array();
         $collabsBcc = array();
-        var_dump('how many recips? ' . count($recipients));
         foreach ($recipients as $recipient) {
             if(get_class($recipient) == 'Collaborator') {
-              //get entry recipients here. remove if need to
               if ($recipient->isCc()) {
                 $collabsCc[] = $recipient->getEmail()->address;
-                $cnotice = $this->replaceVars($msg, array('recipient.name.first' => 'Collaborator', 'recipient' => $recipient));
+                $cnotice = $this->replaceVars($msg, array('recipient.name.first' => __('Collaborator'), 'recipient' => $recipient));
               }
               else
                 $collabsBcc[] = $recipient;
@@ -1587,7 +1584,7 @@ implements RestrictedAccess, Threadable {
 
         $collaborators['cc'] = $collaborators;
 
-        //adriane: collaborator email sent out
+        //collaborator email sent out
         $email->send('', $cnotice['subj'], $cnotice['body'], $attachments,
             $options, $collaborators);
     }
@@ -2358,17 +2355,14 @@ implements RestrictedAccess, Threadable {
 
         if (($vars['userId'] != $this->user_id) && (!$existingCollab)) {
           if ($vars['userId'] == 0) {
-            foreach (array('from', 'From') as $k) {
-              if (isset($hdr[$k]) && $hdr[$k]) {
-                $startsAt = strpos($hdr[$k], "<") + strlen("<");
-                $endsAt = strpos($hdr[$k], ">", $startsAt);
-                $email = substr($hdr[$k], $startsAt, $endsAt - $startsAt);
-                if (!$existinguser = User::lookupByEmail($email)) {
-                  $name = substr($hdr[$k], 0, strpos($hdr[$k], "<"));
-                  $user = User::fromVars(array('name' => $name, 'email' => $email));
-                  $vars['userId'] = $user->getId();
-                }
-              }
+            $emailStream = '<<<EOF' . $vars['header'] . 'EOF';
+            $parsed = EmailDataParser::parse($emailStream);
+            $name = $parsed['name'];
+            $email = $parsed['email'];
+            if (!$existinguser = User::lookupByEmail($email)) {
+              $name = $parsed['name'];
+              $user = User::fromVars(array('name' => $name, 'email' => $email));
+              $vars['userId'] = $user->getId();
             }
           }
           else {
@@ -2415,7 +2409,6 @@ implements RestrictedAccess, Threadable {
               if (!$isMsg) {
                 return $this->postNote($vars,$errors, $user, true);
               }
-
             }
           }
         }
@@ -2477,7 +2470,7 @@ implements RestrictedAccess, Threadable {
         $this->onMessage($message, ($autorespond && $alerts), $reopen); //must be called b4 sending alerts to staff.
 
         if ($autorespond && $alerts && $cfg && $cfg->notifyCollabsONNewMessage()) {
-          //adriane: when user replies, this is where collabs notified
+          //when user replies, this is where collabs notified
           $this->notifyCollaborators($message, array('signature' => ''));
         }
 
