@@ -114,19 +114,10 @@ if ($_POST && $thread && $thread->getNumCollaborators()) {
 $(function() {
 
     $(document).on('click', 'form.collaborators a#addcollaborator', function (e) {
-        var tid = <?php echo $thread->getId(); ?>;
-        var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
-         $.userLookup(url, function(user) {
-            if($('.dialog#confirm-action #collaborator-confirm').length) {
-                $('.dialog#confirm-action #action').val('addcc');
-                $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
-                $('#overlay').show();
-                $('.dialog#confirm-action .confirm-action').hide();
-                $('.dialog#confirm-action p#collaborator-confirm')
-                .show()
-                .parent('div').show().trigger('click');
-            }
-         });
+        e.preventDefault();
+        $('div#manage_collaborators').hide();
+        $('div#add_collaborator').fadeIn();
+        return false;
      });
 
     $(document).on('click', 'form.collaborators a.remove', function (e) {

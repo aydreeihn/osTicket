@@ -87,7 +87,6 @@ class ThreadAjaxAPI extends AjaxController {
 
     //Collaborators utils
     function addCollaborator($tid, $uid=0) {
-      //mine:
         global $thisstaff;
 
         if (!($thread=Thread::lookup($tid))
@@ -97,11 +96,30 @@ class ThreadAjaxAPI extends AjaxController {
 
         $user = $uid? User::lookup($uid) : null;
 
-        $users = array();
-        if (isset($_POST['id']) && $_POST['id']) //Existing user/
+        //If not a post then assume new collaborator form
+        if(!$_POST)
+            return self::_addcollaborator($thread, $user);
+
+        $user = $form = null;
+        if (isset($_POST['id']) && $_POST['id']) { //Existing user/
             $user =  User::lookup($_POST['id']);
+        } else { //We're creating a new user!
+            $form = UserForm::getUserForm()->getForm($_POST);
+            $user = User::fromForm($form);
+        }
 
         $errors = $info = array();
+        if ($user) {
+            // FIXME: Refuse to add ticket owner??
+            if (($c=$thread->addCollaborator($user,
+                            array('isactive'=>1), $errors))) {
+                $info = array('msg' => sprintf(__('%s added as a collaborator'),
+                            Format::htmlchars($c->getName())));
+                $c->setCc();
+                $c->save();
+                return self::_collaborators($thread, $info);
+            }
+        }
 
         if($errors && $errors['err']) {
             $info +=array('error' => $errors['err']);
@@ -109,7 +127,7 @@ class ThreadAjaxAPI extends AjaxController {
             $info +=array('error' =>__('Unable to add collaborator.').' '.__('Internal error occurred'));
         }
 
-        return self::_addcollaborator($thread, $user, $form, $info, $cc);
+        return self::_addcollaborator($thread, $user, $form, $info);
     }
 
     function updateCollaborator($tid, $cid) {
@@ -178,7 +196,6 @@ class ThreadAjaxAPI extends AjaxController {
 
         ob_start();
         include STAFFINC_DIR . 'templates/collaborators-preview.tmpl.php';
-        // include CLIENTINC_DIR . 'templates/collaborators-preview.tmpl.php';
         $resp = ob_get_contents();
         ob_end_clean();
 
@@ -188,7 +205,14 @@ class ThreadAjaxAPI extends AjaxController {
     function _addcollaborator($thread, $user=null, $form=null, $info=array()) {
         global $thisstaff;
 
-        $info = array('title' => __('Add a collaborator'));
+        $info += array(
+                    'title' => __('Add a collaborator'),
+                    'action' => sprintf('#thread/%d/add-collaborator',
+                        $thread->getId()),
+                    'onselect' => sprintf('ajax.php/thread/%d/add-collaborator/',
+                        $thread->getId()),
+                    );
+
         ob_start();
         include STAFFINC_DIR . 'templates/user-lookup.tmpl.php';
         $resp = ob_get_contents();

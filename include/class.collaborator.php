@@ -172,13 +172,14 @@ implements EmailContact, ITicketUser {
     }
 
     static function add($info, &$errors) {
-
         if (!$info || !$info['threadId'] || !$info['userId'])
             $errors['err'] = __('Invalid or missing information');
-        elseif ($c = static::lookup(array(
+        elseif ($c = Collaborator::lookup(array(
             'thread_id' => $info['threadId'],
             'user_id' => $info['userId'],
         )))
+          $errors['err'] = sprintf(__('%s is already a collaborator'),
+                      $c->getName());
 
         if ($errors) return false;
 

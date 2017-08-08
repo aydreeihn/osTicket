@@ -996,10 +996,6 @@ if ($errors['err'] && isset($_POST['a'])) {
             __('Are you sure you want to DELETE %s?'), __('this ticket'));?></strong></font>
         <br><br><?php echo __('Deleted data CANNOT be recovered, including any associated attachments.');?>
     </p>
-    <!-- //mine: -->
-    <p class="confirm-action" style="display:none;" id="collaborator-confirm">
-        <?php echo sprintf(__('Are you sure you want to add this Collaborator?')); ?>
-    </p>
     <div><?php echo __('Please confirm to continue.');?></div>
     <form action="tickets.php?id=<?php echo $ticket->getId(); ?>" method="post" id="confirm-form" name="confirm-form">
         <?php csrf_token(); ?>
@@ -1080,14 +1076,11 @@ $(function() {
       $("li[title='— Add New —']").remove();
       var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
        $.userLookup(url, function(user) {
-          if($('.dialog#confirm-action #collaborator-confirm').length) {
+         e.preventDefault();
+          if($('.dialog#confirm-action').length) {
               $('.dialog#confirm-action #action').val('addcc');
               $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
               $('#overlay').show();
-              $('.dialog#confirm-action .confirm-action').hide();
-              $('.dialog#confirm-action p#collaborator-confirm')
-              .show()
-              .parent('div').show().trigger('click');
           }
        });
           //remove 'NEW' from the array
@@ -1108,14 +1101,10 @@ $(function() {
         var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
          $.userLookup(url, function(user) {
             e.preventDefault();
-            if($('.dialog#confirm-action #collaborator-confirm').length) {
+            if($('.dialog#confirm-action').length) {
                 $('.dialog#confirm-action #action').val('addbcc');
                 $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
                 $('#overlay').show();
-                $('.dialog#confirm-action .confirm-action').hide();
-                $('.dialog#confirm-action p#collaborator-confirm')
-                .show()
-                .parent('div').show().trigger('click');
             }
          });
          //remove 'NEW' from the array
