@@ -2376,7 +2376,7 @@ implements RestrictedAccess, Threadable {
           }
           $c = $this->getThread()->addCollaborator($user,array('isactive'=>1), $errors);
 
-          foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
+          foreach (array('To', 'TO', 'Cc', 'CC') as $k) {
             if ($user && isset($hdr[$k]) && $hdr[$k])
               $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
           }
@@ -2390,7 +2390,7 @@ implements RestrictedAccess, Threadable {
         else {
           $c = Collaborator::lookup($existingCollab);
           if ($c && !$c->isCc()) {
-            foreach (array('To', 'to', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
+            foreach (array('To', 'TO', 'Cc', 'CC') as $k) {
               if (isset($hdr[$k]) && $hdr[$k])
                 $addresses[] = Mail_Parse::parseAddressList($hdr[$k]);
             }

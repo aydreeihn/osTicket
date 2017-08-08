@@ -743,11 +743,8 @@ implements TemplateVariable {
     }
 
     function getPosterType() {
-      if ($this->staff_id)
-        $this->posterType = 'Agent';
-      else {
-        $this->posterType = 'User';
-      }
+      $this->staff_id ?
+        $this->posterType = __('Agent') : $this->posterType = __('User');
 
       return $this->posterType;
     }

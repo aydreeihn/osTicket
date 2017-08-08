@@ -11,7 +11,6 @@ if (!$_REQUEST['mode']) { ?>
 $recipients = Format::htmlchars($recipients);
  foreach ($recipients as $k => $v) {
     echo sprintf('<tr><td nowrap width="5" valign="top"><b>%s</b>:</td><td>%s</td></tr>',
-            //  strtoupper($k),
             ucfirst($k),            
             implode('<br>', $v)
              );

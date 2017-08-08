@@ -158,7 +158,6 @@ class UserModel extends VerySimpleModel {
     }
 
     public function setFlag($flag, $val) {
-
         if ($val)
             $this->status |= $flag;
         else
