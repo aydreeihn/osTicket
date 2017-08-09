@@ -238,10 +238,7 @@ if ($closedTickets) {?>
                 $subject="<b>$subject</b>";
                 $ticketNumber="<b>$ticketNumber</b>";
             }
-            if ($thisclient->getId() != $T['user_id'])
-              $isCollab = true;
-            else
-              $isCollab = false;
+            $thisclient->getId() != $T['user_id'] ? $isCollab = true : $isCollab = false;
             ?>
             <tr id="<?php echo $T['ticket_id']; ?>">
                 <td>

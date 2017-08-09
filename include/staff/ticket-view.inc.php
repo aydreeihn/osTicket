@@ -659,7 +659,7 @@ if ($errors['err'] && isset($_POST['a'])) {
              <tr>
                  <td width="160"><b><?php echo __('Cc'); ?>:</b></td>
                  <td>
-                     <select name="ccs[]" id="cc_users2" multiple="multiple"
+                     <select name="ccs[]" id="cc_users" multiple="multiple"
                          data-placeholder="<?php echo __('Select Contacts'); ?>">
                          <option value=""></option>
                          <option value="NEW">&mdash; <?php echo __('Add New');?> &mdash;</option>
@@ -680,7 +680,7 @@ if ($errors['err'] && isset($_POST['a'])) {
              <tr>
                <td width="160"><b><?php echo __('Bcc'); ?>:</b></td>
                <td>
-                   <select name="bccs[]" id="bcc_users2" multiple="multiple"
+                   <select name="bccs[]" id="bcc_users" multiple="multiple"
                        data-placeholder="<?php echo __('Select Contacts'); ?>">
                        <option value=""></option>
                        <option value="NEW">&mdash; <?php echo __('Add New');?> &mdash;</option>
@@ -1063,12 +1063,12 @@ $(function() {
 });
 
 $(function() {
-    $("#cc_users2").select2({width: '350px'});
-    $("#bcc_users2").select2({width: '350px'});
+    $("#cc_users").select2({width: '350px'});
+    $("#bcc_users").select2({width: '350px'});
 });
 
 $(function() {
-   $('#cc_users2').on("select2:select", function(e) {
+   $('#cc_users').on("select2:select", function(e) {
      var el = $(this);
      var tid = <?php echo $ticket->getThreadId(); ?>;
 
@@ -1083,7 +1083,6 @@ $(function() {
               $('#overlay').show();
           }
        });
-          //remove 'NEW' from the array
           var arr = el.val();
           var removeStr = "NEW";
 
@@ -1092,7 +1091,7 @@ $(function() {
      }
   });
 
-  $('#bcc_users2').on("select2:select", function(e) {
+  $('#bcc_users').on("select2:select", function(e) {
       var el = $(this);
       var tid = <?php echo $ticket->getThreadId(); ?>;
 
@@ -1107,7 +1106,6 @@ $(function() {
                 $('#overlay').show();
             }
          });
-         //remove 'NEW' from the array
          var arr = el.val();
          var removeStr = "NEW";
 
@@ -1116,10 +1114,10 @@ $(function() {
       }
   });
 
-  $('#cc_users2').on("select2:unselecting", function(e) {
+  $('#cc_users').on("select2:unselecting", function(e) {
       var confirmation = confirm(__("Are you sure you want to remove the collaborator from receiving this reply?"));
       if (confirmation == false) {
-        $('#cc_users2').on("select2:opening", function(e) {
+        $('#cc_users').on("select2:opening", function(e) {
           return false;
         });
         return false;
@@ -1127,19 +1125,14 @@ $(function() {
 
  });
 
- $('#bcc_users2').on("select2:unselecting", function(e) {
+ $('#bcc_users').on("select2:unselecting", function(e) {
      var confirmation = confirm(__("Are you sure you want to remove the collaborator from receiving this reply?"));
      if (confirmation == false) {
-         $('#bcc_users2').on("select2:opening", function(e) {
+         $('#bcc_users').on("select2:opening", function(e) {
            return false;
          });
          return false;
        }
  });
-
- // $("form").submit(function(event) { //adriane
- //   event.preventDefault();
- // });
-
 });
 </script>

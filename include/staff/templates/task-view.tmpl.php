@@ -384,22 +384,6 @@ if (!$ticket) { ?>
                                     $task->getThreadId(),
                                     $collaborators);
                            ?>
-
-                           <!-- adriane here -->
-                           <?php
-                          //  $numCollaborators = $task->getThread()->getNumCollaborators();
-                          //   if ($task->getThread()->getNumCollaborators())
-                          //      $recipients = sprintf(__('%d'),
-                          //              $numCollaborators);
-                          //  else
-                          //    $recipients = 0;
-                           //
-                          //   echo sprintf('<span><a class="collaborators preview"
-                          //          href="#thread/%d/collaborators"><span id="t%d-recipients"><i class="icon-group"></i> (%s)</span></a></span>',
-                          //          $task->getThreadId(),
-                          //          $task->getThreadId(),
-                          //          $recipients);
-                            ?>
                         </td>
                     </tr>
                 </table>
@@ -714,21 +698,5 @@ $(function() {
     $('#ticket-tasks-count').html(<?php echo $ticket->getNumTasks(); ?>);
    <?php
     } ?>
-
-    //adriane
-    // $(document).on('submit', 'a.collaborators', function(e) {
-    //   var url = 'ajax.php/thread/' + <?php echo $task->getThreadId(); ?> + '/add-collaborator' ;
-    //   $.userLookup(url, function(user) {
-        //  if($('.dialog#confirm-action #collaborator-confirm').length) {
-        //      $('.dialog#confirm-action #action').val('addcc');
-        //      $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
-        //      $('#overlay').show();
-        //      $('.dialog#confirm-action .confirm-action').hide();
-        //      $('.dialog#confirm-action p#collaborator-confirm')
-        //      .show()
-        //      .parent('div').show().trigger('click');
-        //  }
-    //   });
-    // });
 });
 </script>

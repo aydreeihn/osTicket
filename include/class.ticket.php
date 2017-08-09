@@ -3834,14 +3834,13 @@ implements RestrictedAccess, Threadable {
                 'thread' => $message ?: $ticket->getThread(),
             );
 
-            //adriane: ticket created on your behalf
+            //ticket created on user's behalf
             if($vars['emailcollab'] == 1) {
 
               $email->send($ticket->getOwner(), $msg['subj'], $msg['body'], $attachments,
                   $options, $collabsCc);
 
               if ($collabsBcc) {
-
                 foreach ($collabsBcc as $recipient) {
                   if (($tpl=$dept->getTemplate())
                       && ($bccmsg=$tpl->getNewTicketNoticeMsgTemplate())
