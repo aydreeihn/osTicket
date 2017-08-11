@@ -1770,9 +1770,12 @@ class ThreadEvents extends InstrumentedList {
     function log($object, $state, $data=null, $user=null, $annul=null) {
         global $thisstaff, $thisclient;
 
-        if ($object instanceof Ticket)
-            // TODO: Use $object->createEvent() (nolint)
-            $event = ThreadEvent::forTicket($object, $state, $user);
+        if ($object instanceof Ticket) {
+          // TODO: Use $object->createEvent() (nolint)
+          $event = ThreadEvent::forTicket($object, $state, $user);
+          $object->lastupdate = SqlFunction::NOW();
+          $object->save();
+        }
         else
             $event = ThreadEvent::create(false, $user);
 

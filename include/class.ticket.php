@@ -1539,7 +1539,6 @@ implements RestrictedAccess, Threadable {
         global $cfg;
 
         $this->isanswered = 0;
-        $this->lastupdate = SqlFunction::NOW();
         $this->save();
 
 
@@ -2657,6 +2656,9 @@ implements RestrictedAccess, Threadable {
             'threadentry' => $note,
             'assignee' => $assignee
         ), $alert);
+
+        $this->lastupdate = SqlFunction::NOW();
+        $this->save();
 
         return $note;
     }
