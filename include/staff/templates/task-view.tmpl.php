@@ -619,32 +619,6 @@ else
 <?php
 echo $reply_attachments_form->getMedia();
 ?>
-<div style="display:none;" class="dialog" id="confirm-action">
-    <h3><?php echo __('Please Confirm');?></h3>
-    <a class="close" href=""><i class="icon-remove-circle"></i></a>
-    <hr/>
-
-    <p class="confirm-action" style="display:none;" id="collaborator-confirm" name="a" value="addcc">
-        <?php echo sprintf(__('Are you sure you want to add this Collaborator?')); ?>
-    </p>
-    <div><?php echo __('Please confirm to continue.');?></div>
-    <form action="tasks.php?id=<?php echo $task->getId(); ?>" method="post" id="confirm-form" name="confirm-form">
-        <?php csrf_token(); ?>
-        <input type="hidden" name="id" value="<?php echo $task->getId(); ?>">
-        <input type="hidden" name="a" value="process">
-        <input type="hidden" name="do" id="action" value="">
-        <hr style="margin-top:1em"/>
-        <p class="full-width">
-            <span class="buttons pull-left">
-                <input type="button" value="<?php echo __('Cancel');?>" class="close">
-            </span>
-            <span class="buttons pull-right">
-                <input type="submit" value="<?php echo __('OK');?>">
-            </span>
-         </p>
-    </form>
-    <div class="clear"></div>
-</div>
 <script type="text/javascript">
 $(function() {
     $(document).off('.tasks-content');
