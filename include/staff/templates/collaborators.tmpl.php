@@ -22,79 +22,42 @@ if(($users=$thread->getCollaborators())) {?>
         $cc = $user->isCc() ? 'selected="selected"' : '';
         $bcc = !$user->isCc() ? 'selected="selected"' : '';
 
-        if ($thread->object_type == 'T') {
-          echo sprintf('<tr>
-                          <td>
-                              <label class="inline checkbox">
-                              <input type="checkbox" name="cid[]" id="c%d" value="%d" %s>
-                              </label>
-                              <a class="collaborator" href="#thread/%d/collaborators/%d/view">%s%s</a>
-                              <div align="left">
-                                  <span class="faded"><em>%s</em></span>
-                              </div>
-                          </td>
-                          <td>
-                            <select name="recipientType[]">
-                                <option value="Cc" %s>Cc</option>
-                                <option value="Bcc" %s>Bcc</option>
-                            </select>
-                          </td>
-                          <td width="10">
-                              <input type="hidden" name="del[]" id="d%d" value="">
-                              <a class="remove" href="#d%d">
-                                <i class="icon-trash icon-fixed-width"></i>
-                              </a>
-                          </td>
-                          <td width="30">&nbsp;</td>
-                      </tr>'
-                      ,
-                      $user->getId(),
-                      $user->getId(),
-                      $checked,
-                      $thread->getId(),
-                      $user->getId(),
-                      (($U = $user->getUser()) && ($A = $U->getAvatar()))
-                          ? $U->getAvatar()->getImageTag(24) : '',
-                      Format::htmlchars($user->getName()),
-                      $user->getEmail(),
-                      $cc,
-                      $bcc,
-                      $user->getId(),
-                      $user->getId());
-        }
-        else {
-          echo sprintf('<tr>
-                          <td>
-                              <label class="inline checkbox">
-                              <input type="checkbox" name="cid[]" id="c%d" value="%d" %s>
-                              </label>
-                              <a class="collaborator" href="#thread/%d/collaborators/%d/view">%s%s</a>
-                              <div align="left">
-                                  <span class="faded"><em>%s</em></span>
-                              </div>
-                          </td>
-                          <td width="10">
-                              <input type="hidden" name="del[]" id="d%d" value="">
-                              <a class="remove" href="#d%d">
-                                <i class="icon-trash icon-fixed-width"></i>
-                              </a>
-                          </td>
-                          <td width="30">&nbsp;</td>
-                      </tr>'
-                      ,
-                      $user->getId(),
-                      $user->getId(),
-                      $checked,
-                      $thread->getId(),
-                      $user->getId(),
-                      (($U = $user->getUser()) && ($A = $U->getAvatar()))
-                          ? $U->getAvatar()->getImageTag(24) : '',
-                      Format::htmlchars($user->getName()),
-                      $user->getEmail(),
-                      $user->getId(),
-                      $user->getId());
-        }
+        echo sprintf('<tr>
+                        <td>
+                            <label class="inline checkbox">
+                            <input type="checkbox" name="cid[]" id="c%d" value="%d" %s>
+                            </label>
+                            <a class="collaborator" href="#thread/%d/collaborators/%d/view">%s%s</a>
+                            <div align="left">
+                                <span class="faded"><em>%s</em></span>
+                            </div>
+                        </td>', $user->getId(),
+                        $user->getId(),
+                        $checked,
+                        $thread->getId(),
+                        $user->getId(),
+                        (($U = $user->getUser()) && ($A = $U->getAvatar()))
+                            ? $U->getAvatar()->getImageTag(24) : '',
+                        Format::htmlchars($user->getName()),
+                        $user->getEmail());
 
+            if ($thread->object_type == 'T') {
+              echo sprintf('<td>
+                <select name="recipientType[]">
+                    <option value="Cc" %s>Cc</option>
+                    <option value="Bcc" %s>Bcc</option>
+                </select>
+              </td>', $cc, $bcc);
+            }
+
+            echo sprintf('<td width="10">
+                <input type="hidden" name="del[]" id="d%d" value="">
+                <a class="remove" href="#d%d">
+                  <i class="icon-trash icon-fixed-width"></i>
+                </a>
+            </td>
+            <td width="30">&nbsp;</td>
+            </tr>',$user->getId(), $user->getId());
     }
     ?>
     <td>
