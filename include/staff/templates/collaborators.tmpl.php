@@ -25,6 +25,7 @@ if(($users=$thread->getCollaborators())) {?>
         echo sprintf('<tr>
                         <td>
                             <label class="inline checkbox">
+                            <input type="checkbox" class="hidden" name="uid[]" id="%d" value="%d" checked="checked">
                             <input type="checkbox" name="cid[]" id="c%d" value="%d" %s>
                             </label>
                             <a class="collaborator" href="#thread/%d/collaborators/%d/view">%s%s</a>
@@ -32,6 +33,8 @@ if(($users=$thread->getCollaborators())) {?>
                                 <span class="faded"><em>%s</em></span>
                             </div>
                         </td>', $user->getId(),
+                        $user->getId(),
+                        $user->getId(),
                         $user->getId(),
                         $checked,
                         $thread->getId(),

@@ -229,7 +229,7 @@ class Thread extends VerySimpleModel {
         }
 
         if($vars['recipientType']) {
-          $combo = array_combine($vars['cid'], $vars['recipientType']);
+          $combo = array_combine($vars['uid'], $vars['recipientType']);
           foreach ($combo as $id => $type) {
             $collab = Collaborator::lookup($id);
             if(get_class($collab) == 'Collaborator') {
