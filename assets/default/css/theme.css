@@ -1128,7 +1128,7 @@ img.avatar {
 }
 
 .thread-entry.bccmessage .header {
-    background:#FFE;
+    background:#DDFDAC;
 }
 .thread-entry.avatar.bccmessage .header:before {
     top: 7px;
@@ -1145,7 +1145,7 @@ img.avatar {
     left: -8px;
     right: initial;
     border-left: none;
-    border-right: 7px solid #FFE;
+    border-right: 7px solid #DDFDAC;
     margin-left: 1px;
 }
 
