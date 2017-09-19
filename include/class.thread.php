@@ -117,7 +117,13 @@ class Thread extends VerySimpleModel {
     }
 
     function getActiveCollaborators() {
-        return $this->getCollaborators(array('isactive'=>1));
+        $collaborators = $this->getCollaborators();
+        $active = array();
+        foreach ($collaborators as $c) {
+          if ($c->isactive())
+            $active[] = $c;
+        }
+        return $active;
     }
 
     function getCollaborators($criteria=array()) {
@@ -129,7 +135,8 @@ class Thread extends VerySimpleModel {
             ->filter(array('thread_id' => $this->getId()));
 
         if (isset($criteria['isactive']))
-            $collaborators->filter(array('isactive' => $criteria['isactive']));
+          $collaborators->filter(array('flags__hasbit'=>Collaborator::FLAG_ACTIVE));
+
 
         // TODO: sort by name of the user
         $collaborators->order_by('user__name');
@@ -176,13 +183,14 @@ class Thread extends VerySimpleModel {
             $collabs = array();
             foreach ($ids as $k => $cid) {
                 if (($c=Collaborator::lookup($cid))
-                        && $c->getThreadId() == $this->getId()
+                        && ($c->getThreadId() == $this->getId())
                         && $c->delete())
                      $collabs[] = $c;
+
+                 $this->getEvents()->log($this->getObject(), 'collab', array(
+                     'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
+                 ));
             }
-            $this->getEvents()->log($this->getObject(), 'collab', array(
-                'del' => array($c->user_id => array('name' => $c->getName()->getOriginal()))
-            ));
         }
 
         //statuses
@@ -195,15 +203,42 @@ class Thread extends VerySimpleModel {
                 'updated' => SqlFunction::NOW(),
                 'isactive' => 1,
             ));
+
+            foreach ($vars['cid'] as $c) {
+              $collab = Collaborator::lookup($c);
+              if(get_class($collab) == 'Collaborator') {
+                $collab->setFlag(Collaborator::FLAG_ACTIVE, true);
+                $collab->save();
+              }
+            }
         }
 
-        $this->collaborators->filter(array(
+        $inactive = $this->collaborators->filter(array(
             'thread_id' => $this->getId(),
             Q::not(array('id__in' => $cids ?: array(0)))
-        ))->update(array(
-            'updated' => SqlFunction::NOW(),
-            'isactive' => 0,
         ));
+        if($inactive) {
+          foreach ($inactive as $i) {
+            $i->setFlag(Collaborator::FLAG_ACTIVE, false);
+            $i->save();
+          }
+          $inactive->update(array(
+              'updated' => SqlFunction::NOW(),
+              'isactive' => 0,
+          ));
+        }
+
+        if($vars['recipientType']) {
+          $combo = array_combine($vars['uid'], $vars['recipientType']);
+          foreach ($combo as $id => $type) {
+            $collab = Collaborator::lookup($id);
+            if(get_class($collab) == 'Collaborator') {
+              $type == 'Cc' ? $collab->setFlag(Collaborator::FLAG_CC, true) :
+                $collab->setFlag(Collaborator::FLAG_CC, false);
+              $collab->save();
+            }
+          }
+        }
 
         unset($this->ht['active_collaborators']);
         $this->_collaborators = null;
@@ -239,8 +274,17 @@ class Thread extends VerySimpleModel {
             include_once INCLUDE_DIR . 'class.thread_actions.php';
 
         $entries = $this->getEntries();
-        if ($type && is_array($type))
-            $entries->filter(array('type__in' => $type));
+
+        if ($type && is_array($type)) {
+          $visibility = Q::all(array('type__in' => $type));
+
+          if ($type['poster']) {
+            $visibility->add(array('poster__exact' => $type['poster']));
+            $visibility->ored = true;
+          }
+
+          $entries->filter($visibility);
+        }
 
         if ($options['sort'] && !strcasecmp($options['sort'], 'DESC'))
             $entries->order_by('-id');
@@ -328,6 +372,30 @@ class Thread extends VerySimpleModel {
 
         $body = $mailinfo['message'];
 
+        // extra handling for determining Cc and Bcc collabs
+        if ($mailinfo['email']) {
+          $staffSenderId = Staff::getIdByEmail($mailinfo['email']);
+
+          if (!$staffSenderId) {
+            $senderId = UserEmailModel::getIdByEmail($mailinfo['email']);
+            if ($senderId) {
+              $mailinfo['userId'] = $senderId;
+
+              if ($object instanceof Ticket && $senderId != $object->user_id && $senderId != $object->staff_id) {
+                $mailinfo['userClass'] = 'C';
+
+                $collaboratorId = Collaborator::getIdByUserId($senderId, $this->getId());
+                $collaborator = Collaborator::lookup($collaboratorId);
+
+                if ($collaborator && ($collaborator->isCc()))
+                  $vars['thread-type'] = 'M';
+                else
+                  $vars['thread-type'] = 'N';
+              }
+            }
+          }
+        }
+
         // Attempt to determine the user posting the entry and the
         // corresponding entry type by the information determined by the
         // mail parser (via the In-Reply-To header)
@@ -402,7 +470,6 @@ class Thread extends VerySimpleModel {
         switch ($vars['thread-type']) {
         case 'M':
             $vars['message'] = $body;
-
             if ($object instanceof Threadable)
                 return $object->postThreadEntry('M', $vars);
             elseif ($this instanceof ObjectThread)
@@ -411,7 +478,6 @@ class Thread extends VerySimpleModel {
 
         case 'N':
             $vars['note'] = $body;
-
             if ($object instanceof Threadable)
                 return $object->postThreadEntry('N', $vars);
             elseif ($this instanceof ObjectThread)
@@ -606,6 +672,7 @@ implements TemplateVariable {
     var $_actions;
     var $is_autoreply;
     var $is_bounce;
+    var $_posterType;
 
     static protected $perms = array(
         self::PERM_EDIT => array(
@@ -670,6 +737,13 @@ implements TemplateVariable {
 
     function getPoster() {
         return $this->poster;
+    }
+
+    function getPosterType() {
+      $this->staff_id ?
+        $this->posterType = __('Agent') : $this->posterType = __('User');
+
+      return $this->posterType;
     }
 
     function getTitle() {
@@ -1298,7 +1372,6 @@ implements TemplateVariable {
         if (!$vars['threadId'] || !$vars['type'])
             return false;
 
-
         if (!$vars['body'] instanceof ThreadEntryBody) {
             if ($cfg->isRichTextEnabled())
                 $vars['body'] = new HtmlThreadEntryBody($vars['body']);
@@ -1324,7 +1397,39 @@ implements TemplateVariable {
             'poster' => $poster,
             'source' => $vars['source'],
             'flags' => $vars['flags'] ?: 0,
+            'recipients' => $vars['recipients'],
         ));
+
+        //add recipients to thread entry
+        $recipients = array();
+        $ticket = Thread::objects()->filter(array('id'=>$vars['threadId']))->values_flat('object_id')->first();
+        $ticketUser = Ticket::objects()->filter(array('ticket_id'=>$ticket[0]))->values_flat('user_id')->first();
+
+        //User
+        if ($ticketUser) {
+          $uEmail = UserEmailModel::objects()->filter(array('user_id'=>$ticketUser[0]))->values_flat('address')->first();
+          $u = array();
+          $u[$ticketUser[0]] = $uEmail[0];
+          $recipients['to'] = $u;
+        }
+
+        if (Collaborator::getIdByUserId($vars['userId'], $vars['threadId']))
+          $entry->flags |= ThreadEntry::FLAG_COLLABORATOR;
+
+        //Cc collaborators
+        if($vars['ccs'] && $vars['emailcollab'] == 1) {
+          $cc = Collaborator::getCollabList($vars['ccs']);
+          $recipients['cc'] = $cc;
+        }
+
+        //Bcc Collaborators
+        if($vars['bccs'] && $vars['emailcollab'] == 1) {
+          $bcc = Collaborator::getCollabList($vars['bccs']);
+          $recipients['bcc'] = $bcc;
+        }
+
+        if (($vars['do'] == 'create' || $vars['emailreply'] == 1) && $recipients)
+          $entry->recipients = json_encode($recipients);
 
         if ($entry->format == 'html')
             // The current codebase properly balances html
@@ -1882,7 +1987,7 @@ class CollaboratorEvent extends ThreadEvent {
             }
             $desc = sprintf($base, implode(', ', $collabs));
             break;
-        case isset($data['add']):
+        case isset($data['add']) && $mode!=self::MODE_CLIENT:
             $base = __('<b>{somebody}</b> added <strong>%s</strong> as collaborators {timestamp}');
             $collabs = array();
             if ($data['add']) {
@@ -2505,14 +2610,12 @@ implements TemplateVariable {
     }
 
     function addNote($vars, &$errors=array()) {
-
         //Add ticket Id.
         $vars['threadId'] = $this->getId();
         return NoteThreadEntry::add($vars, $errors);
     }
 
     function addMessage($vars, &$errors) {
-
         $vars['threadId'] = $this->getId();
         $vars['staffId'] = 0;
 

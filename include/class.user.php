@@ -33,6 +33,15 @@ class UserEmailModel extends VerySimpleModel {
     function __toString() {
         return (string) $this->address;
     }
+
+    static function getIdByEmail($email) {
+        $row = UserEmailModel::objects()
+            ->filter(array('address'=>$email))
+            ->values_flat('user_id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
 }
 
 class UserModel extends VerySimpleModel {
@@ -146,6 +155,13 @@ class UserModel extends VerySimpleModel {
             $this->save();
 
         return true;
+    }
+
+    public function setFlag($flag, $val) {
+        if ($val)
+            $this->status |= $flag;
+        else
+            $this->status &= ~$flag;
     }
 
     protected function hasStatus($flag) {
