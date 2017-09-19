@@ -1,7 +1,7 @@
 /**
- * @version v1.11.0
- * @title Add recipients field/collaborator flags
  * @signature b2ce8ba794a40ed5380d7cdf30bca233
+ * @version v1.11.0
+ * @title Add recipients field and collaborator flags
  *
  * This patch adds a new field called recipients to the thread entry table
  * allowing agents to see a list of recipients for any thread entry where

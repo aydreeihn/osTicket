@@ -201,7 +201,6 @@ class Thread extends VerySimpleModel {
                 'id__in' => $cids
             ))->update(array(
                 'updated' => SqlFunction::NOW(),
-                'isactive' => 1,
             ));
 
             foreach ($vars['cid'] as $c) {
@@ -224,7 +223,6 @@ class Thread extends VerySimpleModel {
           }
           $inactive->update(array(
               'updated' => SqlFunction::NOW(),
-              'isactive' => 0,
           ));
         }
 
