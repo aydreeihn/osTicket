@@ -130,6 +130,16 @@ class TicketApiController extends ApiController {
         $errors = array();
 
         $ticket = Ticket::create($data, $errors, $data['source'], $autorespond, $alert);
+
+        if ($data['emails']) {
+            foreach ($data['emails'] as $email_id) {
+              if ($email_id != $ticket->email_id) {
+                $email = Email::lookup($email_id);
+                $dept = Dept::lookup($email->dept_id);
+                //add ticket referral here for $dept
+              }
+            }
+        }
         # Return errors (?)
         if (count($errors)) {
             if(isset($errors['errno']) && $errors['errno'] == 403)

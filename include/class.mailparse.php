@@ -647,6 +647,7 @@ class EmailDataParser {
         if (($dt = $parser->getDeliveredToAddressList()))
             $tolist['delivered-to'] = $dt;
 
+        $data['emails'] = array();
         foreach ($tolist as $source => $list) {
             foreach($list as $addr) {
                 if (!($emailId=Email::getIdByEmail(strtolower($addr->mailbox).'@'.$addr->host))) {
@@ -657,8 +658,11 @@ class EmailDataParser {
                         'source' => sprintf(_S("Email (%s)"), $source),
                         'name' => trim(@$addr->personal, '"'),
                         'email' => strtolower($addr->mailbox).'@'.$addr->host);
-                } elseif(!$data['emailId']) {
-                    $data['emailId'] = $emailId;
+                } else {
+                  $data['emails'][] = $emailId;
+                  if(!$data['emailId']) {
+                      $data['emailId'] = $emailId;
+                  }
                 }
             }
         }
@@ -689,6 +693,14 @@ class EmailDataParser {
             }
             $data['emailId'] = $emailId;
         }
+
+        if($bcc = $parser->getBccAddressList()) {
+            foreach ($bcc as $addr) {
+              if(($emailId=Email::getIdByEmail($addr->mailbox.'@'.$addr->host)))
+                $data['emails'][] = $emailId;
+            }
+        }
+        $data['emails'] = array_unique($data['emails']);
 
         if ($parser->isBounceNotice()) {
             // Fetch the original References and assign to 'references'

@@ -17,6 +17,7 @@
 include_once(INCLUDE_DIR.'class.ticket.php');
 include_once(INCLUDE_DIR.'class.draft.php');
 include_once(INCLUDE_DIR.'class.role.php');
+include_once INCLUDE_DIR.'api.tickets.php';
 
 //Ticket thread.
 class Thread extends VerySimpleModel {
@@ -1143,6 +1144,20 @@ implements TemplateVariable {
                  )
          ) {
             $seen = true;
+
+            if ($mailinfo['emails']) {
+              $ticket = $entry->getThread()->getObject();
+              if ($ticket instanceof Ticket) {
+                foreach ($mailinfo['emails'] as $email_id) {
+                  if ($email_id != $ticket->email_id) {
+                    $email = Email::lookup($email_id);
+                    $dept = Dept::lookup($email->dept_id);
+                    //add ticket referral here for $dept
+                  }
+                }
+              }
+            }
+
             return $entry;
         }
 
@@ -1199,6 +1214,14 @@ implements TemplateVariable {
                 if (@$mid_info['userClass'])
                     $mailinfo['userClass'] = $mid_info['userClass'];
 
+                //DNVGL only
+                //check here to see if email forwarded to another dept
+                //if this is the case, create a new ticket for that new dept
+                $ticket = $t->getThread()->getObject();
+                if ($ticket instanceof Ticket) {
+                  if ($ticket->email_id && $mailinfo['emailId'] != $ticket->email_id)
+                    return TicketApiController::createTicket($mailinfo);
+                }
 
                 // ThreadEntry was positively identified
                 return $t;
