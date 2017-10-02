@@ -1221,6 +1221,18 @@ implements TemplateVariable {
                 if ($ticket instanceof Ticket) {
                   if ($ticket->email_id && $mailinfo['emailId'] != $ticket->email_id)
                     return TicketApiController::createTicket($mailinfo);
+
+                    //DNVGL Only: Create new ticket if collaborator was removed
+                    if ($mid_info['userId']) {
+                      $collab = Collaborator::objects()
+                       ->filter(array('user_id' => $mid_info['userId'],
+                                'thread_id' => $ticket->getThreadId()))
+                       ->first();
+
+                       if (!$collab && $mid_info['userClass'] != 'U')
+                         return TicketApiController::createTicket($mailinfo);
+
+                    }
                 }
 
                 // ThreadEntry was positively identified
@@ -1236,6 +1248,20 @@ implements TemplateVariable {
                     ->first()
                 )
          ) {
+
+           //DNVGL Only: Create new ticket if collaborator was removed
+           $ticket = $entry->getThread()->getObject();
+           if ($ticket instanceof Ticket) {
+             //check if the user is a collaborator
+             $collab = Collaborator::objects()
+                 ->filter(array('thread_id' => $ticket->getThreadId(),
+                                'user__emails__address' => $mailinfo['email']))
+                 ->first();
+
+             if (!$collab && strcasecmp($mailinfo['email'], $ticket->getEmail()) != 0)
+               return TicketApiController::createTicket($mailinfo);
+           }
+
             $mailinfo['passive'] = true;
             return $entry;
         }
