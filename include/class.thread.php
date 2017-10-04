@@ -17,7 +17,6 @@
 include_once(INCLUDE_DIR.'class.ticket.php');
 include_once(INCLUDE_DIR.'class.draft.php');
 include_once(INCLUDE_DIR.'class.role.php');
-include_once INCLUDE_DIR.'api.tickets.php';
 
 //Ticket thread.
 class Thread extends VerySimpleModel {
@@ -1219,19 +1218,24 @@ implements TemplateVariable {
                 //if this is the case, create a new ticket for that new dept
                 $ticket = $t->getThread()->getObject();
                 if ($ticket instanceof Ticket) {
-                  if ($ticket->email_id && $mailinfo['emailId'] != $ticket->email_id)
-                    return TicketApiController::createTicket($mailinfo);
+                    
+                  if ($ticket->email_id && $mailinfo['emailId'] != $ticket->email_id) {
+                    $mailinfo['force_new'] = true;
+                    return null;
+                  }
 
                     //DNVGL Only: Create new ticket if collaborator was removed
+                    //(system email response)
                     if ($mid_info['userId']) {
                       $collab = Collaborator::objects()
                        ->filter(array('user_id' => $mid_info['userId'],
                                 'thread_id' => $ticket->getThreadId()))
                        ->first();
 
-                       if (!$collab && $mid_info['userClass'] != 'U')
-                         return TicketApiController::createTicket($mailinfo);
-
+                       if (!$collab && $mid_info['userClass'] != 'U') {
+                         $mailinfo['force_new'] = true;
+                         return null;
+                       }
                     }
                 }
 
@@ -1250,6 +1254,7 @@ implements TemplateVariable {
          ) {
 
            //DNVGL Only: Create new ticket if collaborator was removed
+           //(user email response)
            $ticket = $entry->getThread()->getObject();
            if ($ticket instanceof Ticket) {
              //check if the user is a collaborator
@@ -1258,8 +1263,10 @@ implements TemplateVariable {
                                 'user__emails__address' => $mailinfo['email']))
                  ->first();
 
-             if (!$collab && strcasecmp($mailinfo['email'], $ticket->getEmail()) != 0)
-               return TicketApiController::createTicket($mailinfo);
+             if (!$collab && strcasecmp($mailinfo['email'], $ticket->getEmail()) != 0) {
+              $seen = false;
+              return null;
+             }
            }
 
             $mailinfo['passive'] = true;
