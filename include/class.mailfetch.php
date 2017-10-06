@@ -804,7 +804,7 @@ class MailFetcher {
         }
         // Allow continuation of thread without initial message or note
         elseif (($thread = Thread::lookupByEmailHeaders($vars))
-            && ($message = $thread->postEmail($vars))
+            && (!$vars['force_new']) && ($message = $thread->postEmail($vars))
         ) {
             // NOTE: This might not be a "ticket"
             $ticket = $thread->getObject();

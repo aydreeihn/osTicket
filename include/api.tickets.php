@@ -176,7 +176,8 @@ class TicketApiController extends ApiController {
         }
 
         // Allow continuation of thread without initial message or note
-        elseif (($thread = Thread::lookupByEmailHeaders($data))
+        elseif (!$data['force_new']
+           && ($thread = Thread::lookupByEmailHeaders($data))
             && ($message = $thread->postEmail($data))
         ) {
             return $thread->getObject();
