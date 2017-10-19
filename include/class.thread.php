@@ -398,6 +398,39 @@ class Thread extends VerySimpleModel {
             $vars['userId'] = 0; //Unknown user! //XXX: Assume ticket owner?
             $vars['thread-type'] = 'M';
         }
+        //DNVGL Only: Create new ticket if collaborator was removed
+        //(system email response)
+        if ($object instanceof Ticket) {
+          if ($mailinfo['userId'] && $mailinfo['userClass']) {
+            $collab = Collaborator::objects()
+             ->filter(array('user_id' => $mailinfo['userId'],
+                      'thread_id' => $object->getThreadId()))
+             ->first();
+
+             if (!$collab && $mailinfo['userClass'] != 'U') {
+               $vars['thread-type'] = 'N';
+             }
+          }
+          //(user email response)
+          else {
+            //check if the user is a collaborator
+            $collab = Collaborator::objects()
+                ->filter(array('thread_id' => $object->getThreadId(),
+                               'user__emails__address' => $mailinfo['email']))
+                ->first();
+
+            if (!$collab && strcasecmp($mailinfo['email'], $object->getEmail()) != 0) {
+              $vars['flags'] = ThreadEntry::FLAG_COLLABORATOR;
+              $vars['thread-type'] = 'N';
+              $user_id = $row = User::objects()
+                ->filter(array('default_email__address'=>$mailinfo['email']))
+                ->values_flat('id')
+                ->first();
+              $vars['userId'] = $user_id[0];
+            }
+          }
+
+        }
 
         switch ($vars['thread-type']) {
         case 'M':
@@ -1224,19 +1257,6 @@ implements TemplateVariable {
                     return null;
                   }
 
-                    //DNVGL Only: Create new ticket if collaborator was removed
-                    //(system email response)
-                    if ($mid_info['userId']) {
-                      $collab = Collaborator::objects()
-                       ->filter(array('user_id' => $mid_info['userId'],
-                                'thread_id' => $ticket->getThreadId()))
-                       ->first();
-
-                       if (!$collab && $mid_info['userClass'] != 'U') {
-                         $mailinfo['force_new'] = true;
-                         return null;
-                       }
-                    }
                 }
 
                 // ThreadEntry was positively identified
@@ -1252,22 +1272,6 @@ implements TemplateVariable {
                     ->first()
                 )
          ) {
-
-           //DNVGL Only: Create new ticket if collaborator was removed
-           //(user email response)
-           $ticket = $entry->getThread()->getObject();
-           if ($ticket instanceof Ticket) {
-             //check if the user is a collaborator
-             $collab = Collaborator::objects()
-                 ->filter(array('thread_id' => $ticket->getThreadId(),
-                                'user__emails__address' => $mailinfo['email']))
-                 ->first();
-
-             if (!$collab && strcasecmp($mailinfo['email'], $ticket->getEmail()) != 0) {
-              $seen = false;
-              return null;
-             }
-           }
 
             $mailinfo['passive'] = true;
             return $entry;
