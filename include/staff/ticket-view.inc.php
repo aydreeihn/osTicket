@@ -1072,7 +1072,7 @@ $(function() {
      var el = $(this);
      var tid = <?php echo $ticket->getThreadId(); ?>;
 
-    if(el.val().includes("NEW")) {
+    if(el.val().indexOf("NEW") > -1) {
       $("li[title='— Add New —']").remove();
       var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
        $.userLookup(url, function(user) {
@@ -1095,7 +1095,7 @@ $(function() {
       var el = $(this);
       var tid = <?php echo $ticket->getThreadId(); ?>;
 
-      if(el.val().includes("NEW")) {
+      if(el.val().indexOf("NEW") > -1) {
         $("li[title='— Add New —']").remove();
         var url = 'ajax.php/thread/' + tid + '/add-collaborator' ;
          $.userLookup(url, function(user) {
