@@ -1249,14 +1249,9 @@ implements TemplateVariable {
                 //DNVGL only
                 //check here to see if email forwarded to another dept
                 //if this is the case, create a new ticket for that new dept
-                $ticket = $t->getThread()->getObject();
-                if ($ticket instanceof Ticket) {
-                    
-                  if ($ticket->email_id && $mailinfo['emailId'] != $ticket->email_id) {
-                    $mailinfo['force_new'] = true;
-                    return null;
-                  }
-
+                if ($t->isForwardedEmail($mailinfo['emailId'])) {
+                  $mailinfo['force_new'] = true;
+                  return null;
                 }
 
                 // ThreadEntry was positively identified
@@ -1272,6 +1267,14 @@ implements TemplateVariable {
                     ->first()
                 )
          ) {
+
+           //DNVGL only
+           //if the email was forwarded to another dept,
+           //ignore passive threading and create new ticket
+           if ($entry->isForwardedEmail($mailinfo['emailId'])) {
+             $mailinfo['force_new'] = true;
+             return null;
+           }
 
             $mailinfo['passive'] = true;
             return $entry;
@@ -1304,6 +1307,38 @@ implements TemplateVariable {
         }
 
         return null;
+    }
+
+    //DNVGL only
+    /**
+     * Parameters:
+     * emailId - send in $mailinfo['emailId']
+     *
+     * This function uses the thread entry to look up
+     * a ticket and then check to see if an email was forwarded
+     * by looking at the ticket's emailId vs the emailId decoded
+     * from the header. If they are different, the ticket was
+     * forwarded, so we return true and create a new ticket in
+     * the dept the ticket was forwarded to. For front end tickets,
+     * we must first determine their email_id based on the ticket's dept_id
+     * (email_id = 0 by default for front end tickets)
+     */
+    function isForwardedEmail($emailId) {
+      global $cfg;
+
+      $ticket = $this->getThread()->getObject();
+      if ($ticket instanceof Ticket) {
+
+        if (!$ticket->email_id) {
+          $ticket->email_id = $ticket->getDept()->getEmailId() ?: $cfg->getDefaultEmailId();
+          $ticket->save();
+        }
+
+        if ($ticket->email_id && $emailId != $ticket->email_id)
+          return true;
+
+      }
+      return false;
     }
 
     /**
