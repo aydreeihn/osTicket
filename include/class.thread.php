@@ -1326,17 +1326,14 @@ implements TemplateVariable {
     function isForwardedEmail($emailId) {
       global $cfg;
 
-      $ticket = $this->getThread()->getObject();
-      if ($ticket instanceof Ticket) {
-
-        if (!$ticket->email_id) {
-          $ticket->email_id = $ticket->getDept()->getEmailId() ?: $cfg->getDefaultEmailId();
-          $ticket->save();
-        }
-
-        if ($ticket->email_id && $emailId != $ticket->email_id)
-          return true;
-
+       $email = Email::lookup($emailId);
+       $ticket = $this->getThread()->getObject();
+       if ($ticket instanceof Ticket && $email) {
+               $deptId = $email->getDeptId() ?: $cfg->getDefaultEmailId();
+               if ($ticket->email_id
+                       && $email->getId() != $ticket->email_id
+                       && $deptId != $ticket->dept_id)
+                 return true;
       }
       return false;
     }

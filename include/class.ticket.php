@@ -3361,8 +3361,11 @@ implements RestrictedAccess, Threadable {
             'source' => $source,
         ));
 
-        if (isset($vars['emailId']) && $vars['emailId'])
-            $ticket->email_id = $vars['emailId'];
+        // Set email_id the ticket is routed to
+        if (!$vars['emailId'] && ($dept = Dept::lookup($deptId)))
+            $vars['emailId'] = $dept->getEmailId();
+
+        $ticket->email_id = $vars['emailId'] ?: $cfg->getDefaultEmailId();
 
         //Make sure the origin is staff - avoid firebug hack!
         if ($vars['duedate'] && !strcasecmp($origin,'staff'))
