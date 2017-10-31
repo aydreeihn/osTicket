@@ -407,6 +407,10 @@ class Task extends TaskModel implements RestrictedAccess, Threadable {
         $alert = isset($options['alert']) ? $options['alert'] : true;
         switch ($type) {
         case 'N':
+        case 'M':
+            $thread = $this->getThread();
+            return $thread->addDescription($vars);
+            break;
         default:
             return $this->postNote($vars, $errors, $poster, $alert);
         }
@@ -1543,7 +1547,8 @@ class TaskThread extends ObjectThread {
     function addDescription($vars, &$errors=array()) {
 
         $vars['threadId'] = $this->getId();
-        $vars['message'] = $vars['description'];
+        if (!isset($vars['message']))
+          $vars['message'] = $vars['description'];
         unset($vars['description']);
         return MessageThreadEntry::add($vars, $errors);
     }
