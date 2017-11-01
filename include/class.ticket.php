@@ -951,12 +951,9 @@ implements RestrictedAccess, Threadable {
         return TransferForm::instantiate($source);
     }
 
-    //adriane
     function getTicketUpdateForm($object, $oid, $source=null) {
-        // var_dump('in getTicketUpdateForm');
 
-        switch ($object)
-        {
+        switch ($object) {
           case 'dept':
             $choices = Dept::getDepartments();
             break;
@@ -975,9 +972,6 @@ implements RestrictedAccess, Threadable {
 
         }
 
-        // var_dump('choices are');
-        // var_dump($choices);
-
         //get the correct form with the currently stored data (source)
         if ($object == 'duedate')
         {
@@ -990,38 +984,22 @@ implements RestrictedAccess, Threadable {
             $source = array($object => array($oid));
         }
 
-        // var_dump('in class.tick, source is');
-        // var_dump($source);
-
         $type = array('field' => ucwords($object), 'choices' => $choices);
         // $form = TicketUpdateForm::instantiate($source, $type);
 
         return TicketUpdateForm::instantiate($source, $type);
     }
 
-    //adriane
     function getFieldUpdateForm($fid, $source=null) {
-      // var_dump('made it in');
-      // var_dump($fid);
-      // var_dump('the fields id is ' . $fid);
 
-      foreach (DynamicFormEntry::forTicket($this->getId()) as $form)
-      {
+      foreach (DynamicFormEntry::forTicket($this->getId()) as $form) {
         $fields = $form->getFields();
       }
-      foreach ($fields as $field)
-      {
-        // var_dump($field->getId());
-        if($field->getId() == $fid)
-        {
-          // var_dump('field I want is ');
-          // var_dump($field->getAnswer()->value);
+      foreach ($fields as $field) {
+        if($field->getId() == $fid) {
           $name = $field->get('name') ?: 'field_'.$field->get('id');
           if(!$field->get('name'))
-          {
-            // var_dump('field has no name');
             $field->set('name', $name);
-          }
 
           $options = array('cust_field' => $field);
           break;
@@ -2265,12 +2243,10 @@ implements RestrictedAccess, Threadable {
          return true;
     }
 
-    //adriane
     function inline_ticket_edit($object, $form, &$errors, $alert=true) {
         global $thisstaff, $cfg;
-        // var_dump($form);
+
         $form_type = get_class($form);
-        // var_dump('form type is ' . $form_type);
 
         // Check if staff can do the edit
         if (!$this->checkStaffPerm($thisstaff, Ticket::PERM_EDIT))
@@ -2289,17 +2265,8 @@ implements RestrictedAccess, Threadable {
         }
 
         $current = $this->get($object);
-          // var_dump('old is ');
-          // var_dump($current);
 
         $new = $form->getVal();
-        // var_dump('new is ');
-        // var_dump($new);
-
-        // var_dump('new state is ');
-        // var_dump($new->getState());
-
-        // var_dump('this is a ' . $uobject);
 
         $noID = false;
         if($object == 'source' || $object == 'duedate')
@@ -2331,12 +2298,8 @@ implements RestrictedAccess, Threadable {
           }
         }
 
-        // var_dump('still here 1');
-        // var_dump('errors are');
-        // var_dump($errors);
         if ($errors || !$this->save(true))
             return false;
-        // var_dump('still here 2');
 
         switch ($object) {
           case 'duedate':
@@ -2371,7 +2334,6 @@ implements RestrictedAccess, Threadable {
         return true;
     }
 
-    //adriane
     function inline_form_edit($fid, $form, &$errors, $alert=true) {
         global $thisstaff, $cfg;
 
@@ -2380,16 +2342,13 @@ implements RestrictedAccess, Threadable {
             return false;
 
          //get the ticket's fields
-         foreach (DynamicFormEntry::forTicket($this->getId()) as $tform)
-         {
+         foreach (DynamicFormEntry::forTicket($this->getId()) as $tform) {
            $nfields = $tform->getFields();
          }
 
          //find the field being edited
-         foreach ($nfields as $nfield)
-         {
-           if($nfield->getId() == $fid)
-           {
+         foreach ($nfields as $nfield) {
+           if($nfield->getId() == $fid) {
             //get old and new values
             $old = $nfield->getAnswer()->value;
             $old_id = $nfield->getAnswer()->value_id;
@@ -2397,8 +2356,7 @@ implements RestrictedAccess, Threadable {
             $a = $nfield->getAnswer();
 
             //set the new values, format for certain field types
-            switch (get_class($nfield))
-            {
+            switch (get_class($nfield)) {
               case 'DatetimeField':
                 $new = $nfield->to_database($new);
                 break;
@@ -2408,22 +2366,12 @@ implements RestrictedAccess, Threadable {
                 break;
             }
 
-            // var_dump('old is ');
-            // var_dump($old);
-            //
-            // var_dump('new is');
-            // var_dump($new);
-
             $cust_field = $form->getField('cust_field');
 
             //get field and see if it's an instanceof priority
-            if($cust_field instanceof PriorityField)
-            {
+            if($cust_field instanceof PriorityField) {
               $priority = $form->getField('priority')->getClean();
               $new = $priority->priority_desc;
-
-              // var_dump('the field is');
-              // var_dump($form->getField('cust_field') instanceof PriorityField);
             }
 
             if ($new == $old)
@@ -2433,8 +2381,7 @@ implements RestrictedAccess, Threadable {
 
               //set values in form_entry_vals table
               //make thread event for fields edited
-              if($cust_field instanceof PriorityField)
-              {
+              if($cust_field instanceof PriorityField) {
                 $a->setValue($priority, $priority->getId());
                 $a->save();
 
@@ -2445,8 +2392,7 @@ implements RestrictedAccess, Threadable {
                                       )
                                     );
               }
-              else
-              {
+              else {
                 $a->setValue($new);
                 $a->save();
 
@@ -2456,8 +2402,6 @@ implements RestrictedAccess, Threadable {
 
              }
              break;
-            //  var_dump('errors are ');
-            //  var_dump($errors);
             }
 
           }

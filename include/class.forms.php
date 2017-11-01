@@ -4617,7 +4617,6 @@ class TransferForm extends Form {
     }
 }
 
-//adriane
 class TicketUpdateForm extends Form {
 
   static $id = 'ticket_update';
@@ -4631,12 +4630,6 @@ class TicketUpdateForm extends Form {
 
       if ($this->fields)
           return $this->fields;
-
-      // var_dump('this field is ');
-      // var_dump($this->options['field']);
-
-      // var_dump('this source is');
-      // var_dump($this->_source);
 
       switch ($this->options['field']) {
         case 'Duedate':
@@ -4665,8 +4658,6 @@ class TicketUpdateForm extends Form {
                     )
                 ),
             );
-
-          // var_dump('is it due date');
 
           break;
         default:
@@ -4721,14 +4712,8 @@ class TicketUpdateForm extends Form {
 
     function getVal() {
         $object_name = $this->options['field'];
-        if (!isset($this->_custom))
-        {
-          // var_dump('passing in');
-          // var_dump(lcfirst($object_name));
-            if (($id = $this->getField(lcfirst($object_name))->getClean()));
-            {
-              // var_dump('got something');
-              // var_dump($id);
+        if (!isset($this->_custom)) {
+            if (($id = $this->getField(lcfirst($object_name))->getClean())); {
               switch ($object_name) {
                 // case 'Status':
                 //   $this->_custom = TicketStatus::lookup($id);
@@ -4739,9 +4724,7 @@ class TicketUpdateForm extends Form {
                   break;
 
                 case 'Duedate':
-                  // var_dump('due date case');
                   $id = $this->getField('duedate')->getClean();
-                  // var_dump($id);
                   $this->_custom = $id;
                   break;
 
@@ -4753,14 +4736,11 @@ class TicketUpdateForm extends Form {
             }
 
         }
-        // var_dump('val field will have is');
-        // var_dump($this->_custom);
         return $this->_custom;
     }
 
 }
 
-//adriane
 class CustomUpdateForm extends AbstractForm {
 
     static $id = 'custom_update';
@@ -4775,8 +4755,6 @@ class CustomUpdateForm extends AbstractForm {
     }
 
     function buildFields() {
-      // var_dump('field is ');
-      // var_dump($this->options['cust_field']);
 
       $fields = array(
         'cust_field' => $this->options['cust_field'],

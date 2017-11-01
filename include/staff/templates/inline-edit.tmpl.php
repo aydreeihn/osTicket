@@ -3,15 +3,7 @@
 <?php
 global $cfg;
 
-// var_dump('form name is ');
-// var_dump($form->getId());
-
 $form_type = get_class($form);
-// var_dump('form type in tmpl is');
-// var_dump($form_type);
-//
-// var_dump('the info is');
-// var_dump($info);
 
 $form = $form ?: $form_type::instantiate($info);
 $options = array('template' => 'simple', 'form_id' => $form->getId());
@@ -47,7 +39,6 @@ $action = $info[':action'] ?: ('#');
             <tr><td colspan="2"><strong><?php echo $info[':extra'];
             ?></strong></td> </tr>
         </tbody>
-        <?php //var_dump($action); ?>
         <?php
         }
        ?>

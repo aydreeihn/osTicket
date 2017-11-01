@@ -416,12 +416,9 @@ class TicketsAjaxAPI extends AjaxController {
         include STAFFINC_DIR . 'templates/transfer.tmpl.php';
     }
 
-  //adriane
   function inline_ticket_update($tid, $field, $oid) {
       global $thisstaff;
-      // var_dump('this is inline_ticket_update');
-      // var_dump($field);
-      // var_dump($oid);
+
       if (!($ticket=Ticket::lookup($tid)))
           Http::response(404, __('No such ticket'));
 
@@ -435,26 +432,12 @@ class TicketsAjaxAPI extends AjaxController {
                   __('Update')),
               ':action' => ('#tickets/'. $tid . '/'. $field . '/' . $oid . '/edit'),
               );
-              // var_dump($info);
 
       $form = $ticket->getTicketUpdateForm($field, $oid, $_POST);
 
-      // var_dump('the form in ajax.tick is ');
-      // var_dump($form);
-
-      // var_dump('form valid? ' . $form->isValid());
-      // var_dump('field is ' . $field . ', oid is ' . $oid);
-
       $field_id = $field . '_id';
 
-      // var_dump($field_id);
-
-      // var_dump($form);
-      // var_dump($errors);
-      // var_dump($form->getField('status'));
-
       if ($_POST) {
-          // var_dump('post and is valid');
           if ($ticket->inline_ticket_edit($field, $form, $errors)) {
                 $_SESSION['::sysmsgs']['msg'] = sprintf(
                         __('%s successfully'),
