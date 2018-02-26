@@ -1,16 +1,13 @@
 <?php
-include_once INCLUDE_DIR .'class.translation.php';
-
-
-class ListManager extends Module {
-    var $prologue = 'CLI list manager';
+class ListItemManager extends Module {
+    var $prologue = 'CLI list item manager';
     var $arguments = array(
         'action' => array(
             'help' => 'Action to be performed',
             'options' => array(
-                'import' => 'Import lists to the system',
-                'export' => 'Export lists from the system',
-                'show' => 'Show the lists',
+                'import' => 'Import list items to the system',
+                'export' => 'Export list items from the system',
+                'list' => 'List lists based on search criteria',
             ),
         ),
     );
@@ -59,7 +56,13 @@ class ListManager extends Module {
 
               $errors = array();
               foreach ($data as $D) {
-                //create lists
+                //look up list id by name
+                $list_id = DynamicList::getIdByName($D['list_name']);
+
+                $D['list_id'] = $list_id;
+                unset($D['list_name']);
+
+                //create cannes responses
                 if ('self::create' && is_callable('self::create'))
                     @call_user_func_array('self::create', array($D, &$errors, true));
               }
@@ -68,20 +71,19 @@ class ListManager extends Module {
             case 'export':
                 if ($options['yaml']) {
                   //get the agents
-                  $lists = $this->getQuerySet($options);
+                  $listItems = $this->getQuerySet($options);
 
                   //format the array nicely
-                  foreach ($lists as $L) {
-                    $clean[] = array('name' => $L->getName(), 'name_plural' => $L->getPluralName(), 'sort_mode' => $L->getSortMode(), 'masks' => $L->get('masks'),
-                                     'type' => $L->get('type'), 'configuration'  => $L->get('configuration'), 'notes' => $L->get('notes'),
-                                     'created' => $L->get('created'), 'updated' => $L->get('updated'));
+                  foreach ($listItems as $L) {
+                    $clean[] = array('list_name' => $L->getList()->getName(), 'status' => $L->get('status'), 'value' => $L->getValue(),
+                                     'extra' => $L->get('extra'), 'sort' => $L->getSortOrder(), 'properties' => $L->get('properties'));
                   }
 
                   //export yaml file
                   // echo (Spyc::YAMLDump($clean));
 
-                  if(!file_exists('list.yaml')) {
-                    $fh = fopen('list.yaml', 'w');
+                  if(!file_exists('list_item.yaml')) {
+                    $fh = fopen('list_item.yaml', 'w');
                     fwrite($fh, (Spyc::YAMLDump($clean)));
                     fclose($fh);
                   }
@@ -91,23 +93,25 @@ class ListManager extends Module {
                   if (!($this->stream = fopen($stream, 'c')))
                       $this->fail("Unable to open output file [{$options['file']}]");
 
-                  fputcsv($this->stream, array('Name', 'Plural Name', 'Sort Mode', 'Masks', 'Type', 'Configuration', 'Notes', 'Created', 'Updated'));
-                  foreach (DynamicList::objects() as $L)
+                  fputcsv($this->stream, array('List Name', 'Status', 'Value', 'Extra', 'Sort', 'Properties'));
+                  foreach (DynamicListItem::objects() as $L)
                       fputcsv($this->stream,
-                              array((string) $L->getName(), $L->getPluralName(), $L->getSortMode(), $L->get('masks'), $L->get('type'),
-                              $L->get('configuration'), $L->get('notes'), $L->get('created'), $L->get('updated')));
+                              array((string) $L->getList()->getName(), $L->get('status'), $L->getValue(), $L->get('extra'),
+                                             $L->getSortOrder(), $L->get('properties')));
                 }
 
                 break;
-            case 'show':
-                $lists = DynamicList::objects()->order_by('-type', 'name');
-                foreach ($lists as $list) {
-                    $this->stdout->write(sprintf("%d %s \n",
-                                $list->getId(),
-                                $list->getName(),
-                                $list->getPluralName() ?: $list->getName()
-                                ));
+
+            case 'list':
+                $listItems = $this->getQuerySet($options);
+
+                foreach ($listItems as $L) {
+                    $this->stdout->write(sprintf(
+                        "%s %s %s %s %s %s\n",
+                        $L->getList()->getName(), $L->get('status'), $L->getValue(), $L->get('extra'), $L->getSortOrder(), $L->get('properties')
+                    ));
                 }
+
                 break;
             default:
                 $this->stderr->write('Unknown action!');
@@ -116,17 +120,17 @@ class ListManager extends Module {
     }
 
     function getQuerySet($options, $requireOne=false) {
-        $lists = DynamicList::objects();
+        $listItems = DynamicListItem::objects();
 
-        return $lists;
+        return $listItems;
     }
 
     static function create($vars=false) {
-        $list = new DynamicList($vars);
-        $list->save();
+        $listItem = new DynamicListItem($vars);
+        $listItem->save();
 
-        return $list;
+        return $listItem;
     }
 }
-Module::register('list', 'ListManager');
+Module::register('list_item', 'ListItemManager');
 ?>

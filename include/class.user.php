@@ -613,6 +613,15 @@ implements TemplateVariable {
         if ($user = static::lookup($id))
             return $user->getName();
     }
+
+    static function getIdByName($name) {
+        $row = static::objects()
+            ->filter(array('name'=>$name))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
 }
 
 class EmailAddress

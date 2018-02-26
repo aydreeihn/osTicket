@@ -104,6 +104,15 @@ class DynamicForm extends VerySimpleModel {
         return $this->getLocal('instructions');
     }
 
+    static function getIdByTitle($title) {
+        $row = static::objects()
+            ->filter(array('title'=>$title))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
+
     /**
      * Drop field errors clean info etc. Useful when replacing the source
      * content of the form. This is necessary because the field listing is

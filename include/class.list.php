@@ -212,6 +212,15 @@ class DynamicList extends VerySimpleModel implements CustomList {
             return $this->getName() . 's';
     }
 
+    static function getIdByName($name) {
+        $row = static::objects()
+            ->filter(array('name'=>$name))
+            ->values_flat('id')
+            ->first();
+
+        return $row ? $row[0] : 0;
+    }
+
     function getItemCount() {
         return DynamicListItem::objects()->filter(array('list_id'=>$this->id))
             ->count();

@@ -481,7 +481,7 @@ implements TemplateVariable {
     }
 
     function getNameById($id) {
-        $names = static::getDepartments();
+        $names = Dept::getDepartments();
         return $names[$id];
     }
 
