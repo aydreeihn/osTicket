@@ -15,7 +15,6 @@ class ListManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -48,7 +47,7 @@ class ListManager extends Module {
 
               //check command line option
               if (!$options['file'] || $options['file'] == '-')
-              $options['file'] = 'php://stdin';
+                $options['file'] = 'php://stdin';
 
               //make sure the file can be opened
               if (!($this->stream = fopen($options['file'], 'rb')))
@@ -63,7 +62,6 @@ class ListManager extends Module {
                 if ('self::create' && is_callable('self::create'))
                     @call_user_func_array('self::create', array($D, &$errors, true));
               }
-
                 break;
             case 'export':
                 if ($options['yaml']) {
@@ -72,9 +70,10 @@ class ListManager extends Module {
 
                   //format the array nicely
                   foreach ($lists as $L) {
-                    $clean[] = array('name' => $L->getName(), 'name_plural' => $L->getPluralName(), 'sort_mode' => $L->getSortMode(), 'masks' => $L->get('masks'),
-                                     'type' => $L->get('type'), 'configuration'  => $L->get('configuration'), 'notes' => $L->get('notes'),
-                                     'created' => $L->get('created'), 'updated' => $L->get('updated'));
+                    $clean[] = array(
+                      'name' => $L->getName(), 'name_plural' => $L->getPluralName(), 'sort_mode' => $L->getSortMode(),
+                      'masks' => $L->get('masks'), 'type' => $L->get('type'), 'configuration'  => $L->get('configuration'),
+                      'notes' => $L->get('notes'), 'created' => $L->get('created'), 'updated' => $L->get('updated'));
                   }
 
                   //export yaml file
@@ -97,7 +96,6 @@ class ListManager extends Module {
                               array((string) $L->getName(), $L->getPluralName(), $L->getSortMode(), $L->get('masks'), $L->get('type'),
                               $L->get('configuration'), $L->get('notes'), $L->get('created'), $L->get('updated')));
                 }
-
                 break;
             case 'show':
                 $lists = DynamicList::objects()->order_by('-type', 'name');

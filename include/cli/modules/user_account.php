@@ -14,7 +14,6 @@ class UserAccountManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -27,7 +26,6 @@ class UserAccountManager extends Module {
         );
 
     var $stream;
-
 
     function run($args, $options) {
 
@@ -46,7 +44,7 @@ class UserAccountManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
@@ -66,7 +64,6 @@ class UserAccountManager extends Module {
               //       found here
               $errors = array();
           }
-
             break;
 
         case 'export':
@@ -101,7 +98,6 @@ class UserAccountManager extends Module {
                           array((string) $U->getUserId(), $U->getStatus(), $U->getTimezone(), $U->getLanguage(), $U->get('username'),
                                          $U->get('passwd'), $U->get('backend'), $U->get('extra'), $U->get('registered')));
             }
-
             break;
 
         case 'list':
@@ -114,7 +110,6 @@ class UserAccountManager extends Module {
                     $U->get('passwd'), $U->get('backend'), $U->get('extra'), $U->get('registered')
                 ));
             }
-
             break;
 
         default:

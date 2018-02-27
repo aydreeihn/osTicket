@@ -92,14 +92,12 @@ class AgentManager extends Module {
               else
                   $this->fail($status);
             }
-            elseif($options['yaml'])
-            {
+            elseif($options['yaml']) {
               //place file into array
               $data = YamlDataParser::load($options['file']);
 
               //parse out data for specific tables
-              foreach ($data as $D)
-              {
+              foreach ($data as $D) {
                 //role id
                 $role = Role::getIdByName($D['role_id']);
 
@@ -111,7 +109,7 @@ class AgentManager extends Module {
                   'lastname' => $D['lastname'], 'passwd' => $D['passwd'],
                   'email' => $D['email'], 'mobile' => $D['mobile'], 'signature' => $D['signature'],
                   'timezone' => $D['timezone'], 'locale' => $D['locale'], 'isactive' => $D['isactive'],
-                  'isactadmin' => $D['isactadmin'], 'accttype' => $D['accttype'], 'isadmin' => $D['isadmin'],
+                  'isadmin' => $D['isadmin'],
                   'isvisible' => $D['isvisible'], 'max_page_size' => $D['max_page_size'],
                   'auto_refresh_rate' => $D['auto_refresh_rate'], 'default_paper_size' => $D['default_paper_size'],
                   'extra' => $D['extra'], 'permissions' => $D['permissions'], 'lastlogin' => $D['lastlogin'],
@@ -131,48 +129,39 @@ class AgentManager extends Module {
               }
             }
             else
-            {
               echo 'Please choose import type of --yaml or --csv' . "\n" ;
-            }
-
             break;
 
         case 'export':
-          if ($options['yaml'])
-          {
+          if ($options['yaml']) {
             //get the agents
             $staff = self::getQuerySet($options);
 
             //format the array nicely
-            foreach ($staff as $S)
-            {
+            foreach ($staff as $S) {
               $clean[] = array('dept_id' => $S->getDept(), 'role_id' => $S->getRole(),
                 'username' => $S->getUserName(), 'firstname' => $S->getFirstName(),
                 'lastname' => $S->getLastName(), 'passwd' => $S->getPasswd(),
                 'email' => $S->getEmail(), 'mobile' => $S->mobile, 'signature' => $S->signature,
                 'timezone' => $S->timezone, 'locale' => $S->locale, 'isactive' => $S->isactive,
-                'isactadmin' => $S->isactadmin, 'accttype' => $S->accttype, 'isadmin' => $S->isadmin,
+                'isadmin' => $S->isadmin,
                 'isvisible' => $S->isvisible, 'max_page_size' => $S->max_page_size,
                 'auto_refresh_rate' => $S->auto_refresh_rate, 'default_paper_size' => $S->default_paper_size,
                 'extra' => $S->extra, 'permissions' => $S->permissions, 'lastlogin' => $S->lastlogin,
                 'passwdreset' => $S->passwdreset, 'created' => $S->created, 'updated' => $S->updated
-
               );
-
             }
 
             //export yaml file
             // echo (Spyc::YAMLDump($clean));
 
-            if(!file_exists('agent.yaml'))
-            {
+            if(!file_exists('agent.yaml')) {
               $fh = fopen('agent.yaml', 'w');
               fwrite($fh, (Spyc::YAMLDump($clean)));
               fclose($fh);
             }
           }
-          else
-          {
+          else {
             $stream = $options['file'] ?: 'php://stdout';
             if (!($this->stream = fopen($stream, 'c')))
                 $this->fail("Unable to open output file [{$options['file']}]");
@@ -186,7 +175,6 @@ class AgentManager extends Module {
                     $agent->getUserName(),
                 ));
           }
-
           break;
 
         case 'list':
@@ -221,9 +209,8 @@ class AgentManager extends Module {
                     $bk->getName()
                 ));
             }
-            else {
+            else
                 $this->stdout->write('Authentication failed');
-            }
             break;
 
         case 'backends':
@@ -290,16 +277,12 @@ class AgentManager extends Module {
     private function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($staffId=Staff::getIdByEmail($vars['email'])))
-        {
           return Staff::lookup($staffId);
-        }
-        else
-        {
+        else {
           $staff = self::create($vars);
           $staff->save();
           return $staff->staff_id;
         }
-
     }
 }
 Module::register('agent', 'AgentManager');

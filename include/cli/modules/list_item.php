@@ -12,7 +12,6 @@ class ListItemManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -45,7 +44,7 @@ class ListItemManager extends Module {
 
               //check command line option
               if (!$options['file'] || $options['file'] == '-')
-              $options['file'] = 'php://stdin';
+                $options['file'] = 'php://stdin';
 
               //make sure the file can be opened
               if (!($this->stream = fopen($options['file'], 'rb')))
@@ -66,7 +65,6 @@ class ListItemManager extends Module {
                 if ('self::create' && is_callable('self::create'))
                     @call_user_func_array('self::create', array($D, &$errors, true));
               }
-
                 break;
             case 'export':
                 if ($options['yaml']) {
@@ -75,8 +73,9 @@ class ListItemManager extends Module {
 
                   //format the array nicely
                   foreach ($listItems as $L) {
-                    $clean[] = array('list_name' => $L->getList()->getName(), 'status' => $L->get('status'), 'value' => $L->getValue(),
-                                     'extra' => $L->get('extra'), 'sort' => $L->getSortOrder(), 'properties' => $L->get('properties'));
+                    $clean[] = array(
+                      'list_name' => $L->getList()->getName(), 'status' => $L->get('status'), 'value' => $L->getValue(),
+                      'extra' => $L->get('extra'), 'sort' => $L->getSortOrder(), 'properties' => $L->get('properties'));
                   }
 
                   //export yaml file
@@ -99,7 +98,6 @@ class ListItemManager extends Module {
                               array((string) $L->getList()->getName(), $L->get('status'), $L->getValue(), $L->get('extra'),
                                              $L->getSortOrder(), $L->get('properties')));
                 }
-
                 break;
 
             case 'list':
@@ -111,7 +109,6 @@ class ListItemManager extends Module {
                         $L->getList()->getName(), $L->get('status'), $L->getValue(), $L->get('extra'), $L->getSortOrder(), $L->get('properties')
                     ));
                 }
-
                 break;
             default:
                 $this->stderr->write('Unknown action!');

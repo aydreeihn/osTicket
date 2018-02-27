@@ -1,7 +1,7 @@
 <?php
 
 class ThreadEventManager extends Module {
-    var $prologue = 'CLI thread entry manager';
+    var $prologue = 'CLI thread event manager';
 
     var $arguments = array(
         'action' => array(
@@ -39,35 +39,28 @@ class ThreadEventManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
           //processing for thread entries
-          foreach ($data as $D)
-          {
+          foreach ($data as $D) {
             //variables to map back to ids
             $ticket_id = Ticket::getIdByNumber($D['ticket_number']);
             $task_id = Task::lookupIdByNumber($D['task_number']);
             $object_type = $D['object_type'];
 
             if($D['object_type'] == 'T')
-            {
               $thread_id = self::getThreadIdByCombo($ticket_id, $object_type);
-            }
             elseif($D['object_type'] == 'A')
-            {
               $thread_id = self::getThreadIdByCombo($task_id, $object_type);
-            }
             else
-            {
               $thread_id = 0;
-            }
 
             $staff_id = self::getStaffIdByEmail($D['staff']);
             $team_id = self::getTeamIdByName($D['team']);
@@ -76,32 +69,24 @@ class ThreadEventManager extends Module {
             $user_id = self::getUserIdByEmail($D['user_email']);
 
             //set user id in data string to match new user ids
-            if($D['state'] == 'collab')
-            {
+            if($D['state'] == 'collab') {
               $arr = explode("\"", $D['data']);
               if($user_id)
-              {
                 $arr[3] = $user_id;
-              }
               else
-              {
                 $arr[3] = 0;
-              }
               $D['data'] = implode("\"",$arr);
             }
 
             //set staff id in data string to match new staff ids
-            if($D['state'] == 'assigned')
-            {
+            if($D['state'] == 'assigned') {
               $assigned = json_decode($D['data'], true);
-              if(!is_array($assigned['staff']) && !is_null($assigned['staff']))
-              {
+              if(!is_array($assigned['staff']) && !is_null($assigned['staff'])) {
                 $assigned['staff'] = $staff_id;
                 $imp_inner = implode($assigned);
                 $D['data'] = '{"staff":' . $imp_inner . '}';
               }
-              elseif($assigned['staff'][0])
-              {
+              elseif($assigned['staff'][0]) {
                 $assigned['staff'][0] = $staff_id;
                 $imp_inner = implode(',"',$assigned['staff']);
                 $D['data'] = '{"staff":[' . $imp_inner . '"]}';
@@ -109,11 +94,9 @@ class ThreadEventManager extends Module {
             }
 
             //set thread entry id in data string to match imported thread entry id
-            if($D['state'] == 'resent')
-            {
+            if($D['state'] == 'resent') {
               $resent = json_decode($D['data'], true);
-              if(!is_array($resent['entry']) && !is_null($resent['entry']))
-              {
+              if(!is_array($resent['entry']) && !is_null($resent['entry'])) {
                 $thread_entry_id = self::getThreadEntryIdByCombo($thread_id, 'S');
                 $resent['entry'] = $thread_entry_id;
                 $imp_inner = implode($resent);
@@ -122,13 +105,12 @@ class ThreadEventManager extends Module {
             }
 
             $thread_event_import[] = array('thread_id' => $thread_id, 'staff_id' => $staff_id,
-            'team_id' => $team_id,'dept_id' => $dept_id,
-            'topic_id' => $topic_id, 'state' => $D['state'],
-            'data' => $D['data'], 'username' => $D['username'],
-            'uid' => $D['uid'], 'uid_type' => $D['uid_type'],
-            'annulled' => $D['annulled'], 'timestamp' => $D['timestamp']
+              'team_id' => $team_id,'dept_id' => $dept_id,
+              'topic_id' => $topic_id, 'state' => $D['state'],
+              'data' => $D['data'], 'username' => $D['username'],
+              'uid' => $D['uid'], 'uid_type' => $D['uid_type'],
+              'annulled' => $D['annulled'], 'timestamp' => $D['timestamp']
             );
-
           }
 
           //create threads with a unique name as a new record
@@ -140,82 +122,70 @@ class ThreadEventManager extends Module {
               //       found here
               $errors = array();
           }
-
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the thread entries
               $thread_events = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($thread_events as $thread_event)
-              {
+              foreach ($thread_events as $te) {
                 //object type
-                $object_type = self::getObjectTypeByThread($thread_event->thread_id);
+                $object_type = self::getObjectTypeByThread($te->thread_id);
 
                 //object id
-                $object_id = self::getObjectIdByThread($thread_event->thread_id);
+                $object_id = self::getObjectIdByThread($te->thread_id);
 
-                if($thread_event->thread_id == 0)
-                {
+                if($te->thread_id == 0) {
                   $ticket_number = '';
                   $task_number = '';
                   $object_type = 'N';
                 }
                 //get ticket number
-                elseif($object_type == 'T')
-                {
+                elseif($object_type == 'T') {
                   $ticket_number = self::getNumberById($object_id);
                   $task_number = '';
                 }
                 //otherwise get task title
-                elseif($object_type == 'A')
-                {
+                elseif($object_type == 'A') {
                   $ticket_number = '';
                   $task_number = self::getTaskById($object_id);
                 }
 
                 //staff email
-                $staff = self::getStaffEmailById($thread_event->staff_id);
+                $staff = self::getStaffEmailById($te->staff_id);
 
                 //team
-                $team_name = self::getTeamById($thread_event->team_id);
+                $team_name = self::getTeamById($te->team_id);
 
                 //topic name
-                $topic_name = self::getTopicById($thread_event->topic_id);
+                $topic_name = self::getTopicById($te->topic_id);
 
-                if($thread_event->state == 'collab')
-                {
-                  $arr = explode("\"", $thread_event->data);
+                if($te->state == 'collab') {
+                  $arr = explode("\"", $te->data);
                   $user_id = $arr[3];
                   $user_email = self::getUserEmailById($user_id);
                 }
 
                 $clean[] = array('object_type' => $object_type, 'ticket_number' => $ticket_number,
-                'task_number' => $task_number, 'staff' => $staff,
-                'team' => $team_name,'department' => $thread_event->getDept(),
-                'topic' => $topic_name, 'state' => $thread_event->state,
-                'data' => $thread_event->data, 'user_email' => $user_email, 'username' => $thread_event->username,
-                'uid' => $thread_event->uid, 'uid_type' => $thread_event->uid_type,
-                'annulled' => $thread_event->annulled, 'timestamp' => $thread_event->timestamp
+                  'task_number' => $task_number, 'staff' => $staff, 'team' => $team_name,'department' => $te->getDept(),
+                  'topic' => $topic_name, 'state' => $te->state, 'data' => $te->data, 'user_email' => $user_email,
+                  'username' => $te->username, 'uid' => $te->uid, 'uid_type' => $te->uid_type,
+                  'annulled' => $te->annulled, 'timestamp' => $te->timestamp
                 );
               }
 
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('thread_event.yaml'))
-              {
+              if(!file_exists('thread_event.yaml')) {
                 $fh = fopen('thread_event.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -223,30 +193,24 @@ class ThreadEventManager extends Module {
               fputcsv($this->stream, array('thread_id', 'staff_id', 'team_id', 'dept_id',
                                            'topic_id', 'state', 'data', 'username',
                                            'uid', 'uid_type', 'annulled', 'timestamp'));
-              foreach (ThreadEvent::objects() as $thread_event)
+              foreach (ThreadEvent::objects() as $te)
                   fputcsv($this->stream,
-                          array((string) $thread_event->thread_id, $thread_event->staff_id,
-                                         $thread_event->team_id, $thread_event->dept_id,
-                                         $thread_event->topic_id, $thread_event->state,
-                                         $thread_event->data, $thread_event->username,
-                                         $thread_event->uid, $thread_event->uid_type,
-                                         $thread_event->annulled, $thread_event->timestamp,
+                          array((string) $te->thread_id, $te->staff_id, $te->team_id, $te->dept_id,
+                                         $te->topic_id, $te->state, $te->data, $te->username,
+                                         $te->uid, $te->uid_type, $te->annulled, $te->timestamp,
                                        ));
             }
-
             break;
 
         case 'list':
             $thread_events = $this->getQuerySet($options);
 
-            foreach ($thread_events as $thread_event) {
+            foreach ($thread_events as $te) {
                 $this->stdout->write(sprintf(
                     "%d %s <%s> %s\n",
-                     $thread_event->thread_id, $thread_event->state,
-                     $thread_event->data, $thread_event->timestamp
+                     $te->thread_id, $te->state, $te->data, $te->timestamp
                 ));
             }
-
             break;
 
         default:
@@ -280,8 +244,7 @@ class ThreadEventManager extends Module {
         return $row ? $row[0] : 0;
     }
 
-    private function getObjectIdByThread($thread_id)
-    {
+    private function getObjectIdByThread($thread_id) {
       $row = Thread::objects()
           ->filter(array(
             'id'=>$thread_id))
@@ -291,8 +254,7 @@ class ThreadEventManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getObjectTypeByThread($thread_id)
-    {
+    private function getObjectTypeByThread($thread_id) {
       $row = Thread::objects()
           ->filter(array(
             'id'=>$thread_id))
@@ -383,8 +345,7 @@ class ThreadEventManager extends Module {
             return $list[0];
     }
 
-    private function getThreadIdByCombo($ticket_id, $object_type)
-    {
+    private function getThreadIdByCombo($ticket_id, $object_type) {
       $row = Thread::objects()
           ->filter(array(
             'object_id'=>$ticket_id,
@@ -395,8 +356,7 @@ class ThreadEventManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getThreadEntryIdByCombo($thread_id, $editor_type)
-    {
+    private function getThreadEntryIdByCombo($thread_id, $editor_type) {
       $row = ThreadEntry::objects()
           ->filter(array(
             'thread_id'=>$thread_id,
@@ -417,8 +377,7 @@ class ThreadEventManager extends Module {
         return $row ? $row[0] : 0;
     }
 
-    private function getIdByCombo($thread_id, $state, $timestamp)
-    {
+    private function getIdByCombo($thread_id, $state, $timestamp) {
       $row = ThreadEvent::objects()
           ->filter(array(
             'thread_id'=>$thread_id,
@@ -430,8 +389,7 @@ class ThreadEventManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    static function create_thread_event($vars=array())
-    {
+    static function create_thread_event($vars=array()) {
       $thread_event = new ThreadEvent($vars);
 
       //return the thread entry
@@ -445,8 +403,6 @@ class ThreadEventManager extends Module {
 
         return $thread_event->id;
     }
-
-
 }
 Module::register('thread_event', 'ThreadEventManager');
 ?>

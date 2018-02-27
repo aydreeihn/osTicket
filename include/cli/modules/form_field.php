@@ -14,7 +14,6 @@ class FormFieldManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -27,7 +26,6 @@ class FormFieldManager extends Module {
         );
 
     var $stream;
-
 
     function run($args, $options) {
 
@@ -46,7 +44,7 @@ class FormFieldManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
@@ -67,7 +65,6 @@ class FormFieldManager extends Module {
             if ('self::create' && is_callable('self::create'))
                 @call_user_func_array('self::create', array($D, &$errors, true));
           }
-
             break;
 
         case 'export':
@@ -77,9 +74,11 @@ class FormFieldManager extends Module {
 
               //format the array nicely
               foreach ($formFields as $F) {
-                $clean[] = array('form_title' => $F->getForm()->getTitle(), 'flags' => $F->get('flags'), 'type' => $F->get('type'), 'label' => $F->get('label'),
-                                 'name' => $F->get('name'), 'configuration' => $F->get('configuration'), 'sort' => $F->get('sort'),
-                                 'hint' => $F->get('hint'), 'created' => $F->get('created'), 'updated' => $F->get('updated'));
+                $clean[] = array(
+                  'form_title' => $F->getForm()->getTitle(), 'flags' => $F->get('flags'), 'type' => $F->get('type'),
+                  'label' => $F->get('label'), 'name' => $F->get('name'), 'configuration' => $F->get('configuration'),
+                  'sort' => $F->get('sort'), 'hint' => $F->get('hint'), 'created' => $F->get('created'),
+                  'updated' => $F->get('updated'));
               }
 
               //export yaml file
@@ -102,7 +101,6 @@ class FormFieldManager extends Module {
                           array((string) $F->getForm()->getTitle(), $F->get('flags'), $F->get('type'), $F->get('label'), $F->get('name'),
                           $F->get('configuration'), $F->get('sort'), $F->get('hint'), $F->get('created'), $F->get('updated')));
             }
-
             break;
 
         case 'list':
@@ -115,7 +113,6 @@ class FormFieldManager extends Module {
                     $F->get('configuration'), $F->get('sort'), $F->get('hint'), $F->get('created'), $F->get('updated')
                 ));
             }
-
             break;
 
         default:

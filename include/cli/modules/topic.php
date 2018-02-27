@@ -13,7 +13,6 @@ class TopicManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -45,27 +44,26 @@ class TopicManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
-          foreach ($data as $D)
-          {
+          foreach ($data as $D) {
             $dept_id = self::getDeptIdByName($D['dept_name']);
             $staff_id = self::getStaffIdByEmail($D['staff']);
             $team_id = self::getTeamIdByName($D['team']);
             $sla_id = self::getSLAIdByName($D['sla']);
 
             $topic_import[] = array('isactive' => $D['isactive'],
-            'ispublic' => $D['isactive'], 'dept_id' => $dept_id, 'priority_id' => $D['priority_id'],
-            'staff_id' => $staff_id, 'team_id' => $team_id,
-            'sla_id' => $sla_id, 'topic' => $D['topic'],
-            'notes' => $D['notes'], 'created' => $D['created'], 'updated' => $D['updated']);
+              'ispublic' => $D['isactive'], 'dept_id' => $dept_id, 'priority_id' => $D['priority_id'],
+              'staff_id' => $staff_id, 'team_id' => $team_id,
+              'sla_id' => $sla_id, 'topic' => $D['topic'],
+              'notes' => $D['notes'], 'created' => $D['created'], 'updated' => $D['updated']);
           }
 
           //create topics with a unique name as a new record
@@ -77,64 +75,54 @@ class TopicManager extends Module {
               //       found here
               $errors = array();
           }
-
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the topics
               $topics = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($topics as $topic)
-              {
-                $clean[] = array('isactive' => $topic->isactive,
-                'ispublic' => $topic->ispublic, 'dept_name' => self::getDeptById($topic->dept_id), 'priority_id' => $topic->getPriorityId(),
-                'staff' => self::getStaffEmailById($topic->staff_id), 'team' => self::getTeamById($topic->team_id),
-                'sla' => self::getSLAById($topic->sla_id), 'topic' => $topic->topic,
-                'notes' => $topic->notes, 'created' => $topic->created, 'updated' => $topic->updated);
-
+              foreach ($topics as $t) {
+                $clean[] = array('isactive' => $t->isactive,
+                'ispublic' => $t->ispublic, 'dept_name' => self::getDeptById($t->dept_id), 'priority_id' => $t->getPriorityId(),
+                'staff' => self::getStaffEmailById($t->staff_id), 'team' => self::getTeamById($t->team_id),
+                'sla' => self::getSLAById($t->sla_id), 'topic' => $t->topic,
+                'notes' => $t->notes, 'created' => $t->created, 'updated' => $t->updated);
               }
 
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('topic.yaml'))
-              {
+              if(!file_exists('topic.yaml')) {
                 $fh = fopen('topic.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
 
               fputcsv($this->stream, array('Topici Id', 'isactive', 'ispublic', 'Priority Id', 'Department Id', 'Topic', 'Notes'));
-              foreach (Topic::objects() as $topic)
+              foreach (Topic::objects() as $t)
                   fputcsv($this->stream,
-                          array((string) $topic->getId(), boolval($topic->isactive), boolval($topic->ispublic),
-                          $topic->getDeptId(), $topic->getPriorityId(), $topic->topic, $topic->notes));
+                          array((string) $t->getId(), boolval($t->isactive), boolval($t->ispublic),
+                          $t->getDeptId(), $t->getPriorityId(), $t->topic, $t->notes));
             }
-
             break;
 
         case 'list':
             $topics = $this->getQuerySet($options);
 
-            foreach ($topics as $topic)
-            {
+            foreach ($topics as $t) {
                 $this->stdout->write(sprintf(
                     "%d %s <%s> %s %s %s %s\n",
-                    $topic->getId(), boolval($topic->isactive), boolval($topic->ispublic),
-                    $topic->getDeptId(), $topic->getPriorityId(), $topic->topic, $topic->notes)
+                    $t->getId(), boolval($t->isactive), boolval($t->ispublic),
+                    $t->getDeptId(), $t->getPriorityId(), $t->topic, $t->notes)
                 );
             }
-
             break;
 
         default:
@@ -142,7 +130,6 @@ class TopicManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $departments = Topic::objects();
@@ -155,17 +142,11 @@ class TopicManager extends Module {
         return $topic;
     }
 
-    static function __create($vars, &$errors, $fetch=false)
-    {
+    static function __create($vars, &$errors, $fetch=false) {
         //see if topic exists
         if ($fetch && ($topicId=Topic::getIdByName($vars['topic'])))
-        {
-          // var_dump('found match ' . $vars['topic']);
           return Topic::lookup($topicId);
-        }
-        else
-        {
-          // var_dump('new ' . $vars['topic']);
+        else {
           $topic = self::create($vars);
           if (!isset($vars['dept_id']))
               $vars['dept_id'] = 0;
@@ -246,8 +227,6 @@ class TopicManager extends Module {
          if ($list)
              return $list[0];
      }
-
-
 }
 Module::register('topic', 'TopicManager');
 ?>

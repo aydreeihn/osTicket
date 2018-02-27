@@ -14,7 +14,6 @@ class CannedResponseManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -45,7 +44,7 @@ class CannedResponseManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
@@ -66,7 +65,6 @@ class CannedResponseManager extends Module {
             if ('self::create' && is_callable('self::create'))
                 @call_user_func_array('self::create', array($D, &$errors, true));
           }
-
             break;
 
         case 'export':
@@ -100,7 +98,6 @@ class CannedResponseManager extends Module {
                           array((string) Dept::getNameById($C->get('dept_id')), $C->isEnabled(), $C->getTitle(), $C->getResponse(), $C->get('lang'),
                           $C->getNotes(), $C->get('created'), $C->get('updated')));
             }
-
             break;
 
         case 'list':
@@ -113,7 +110,6 @@ class CannedResponseManager extends Module {
                     $C->getNotes(), $C->get('created'), $C->get('updated')
                 ));
             }
-
             break;
 
         default:

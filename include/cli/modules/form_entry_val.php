@@ -14,7 +14,6 @@ class FormEntryValManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -50,21 +49,18 @@ class FormEntryValManager extends Module {
           $ctr2 = 0;
           $ctr3 = 0;
           //processing for form entry values
-          foreach ($data as $D)
-          {
+          foreach ($data as $D) {
             $form_entry_values = $D['form_entry_values'];
             $ticket_id = Ticket::getIdByNumber($D['ticket_number']);
 
-            foreach ($form_entry_values as $fev)
-            {
+            foreach ($form_entry_values as $fev) {
               $form_id = self::getFormIdByName($fev['form_name']);
               $entry_id = self::getFormEntryByCombo($form_id, $ticket_id);
               $field_id = self::getFieldIdByCombo($form_id, $fev['field_label'], $fev['field_name']);
               $field_type = self::getFieldTypeById($field_id);
 
               //if value is a list value, map to the id of the list item
-              if(strpos($field_type, 'list') !== false)
-              {
+              if(strpos($field_type, 'list') !== false) {
                 $arr = explode("\"", $fev['value']);
                 $list_id = self::getListIdByName($arr[3]);
                 $arr[1] = $list_id;
@@ -72,27 +68,22 @@ class FormEntryValManager extends Module {
               }
 
               //if value is for an attachment field, map file id(s)
-              if($field_type == 'files' && $fev['value'] != '[]')
-              {
+              if($field_type == 'files' && $fev['value'] != '[]') {
                 $ctr++;
                 $arr = explode("\"", $fev['value']);
 
-                switch (count($arr))
-                {
+                switch (count($arr)) {
                   //just a file id(s) in [], sep by commas
                   case 1:
                     $csarr = explode(",", $fev['file_signature']);
-                    if(count($csarr) > 1)
-                    {
+                    if(count($csarr) > 1) {
                       foreach ($csarr as $c)
-                      {
                         $file_id_mult[] = self::getFileIdBySignature($c);
-                      }
+
                       $file_ids_string = implode(',', $file_id_mult);
                       $fev['value'] = '[' . $file_ids_string . ']';
                     }
-                    else
-                    {
+                    else {
                       $file_id = self::getFileIdBySignature($csarr[0]);
                       $fev['value'] = '[' . $file_id . ']';
                     }
@@ -157,20 +148,13 @@ class FormEntryValManager extends Module {
                     $ctr0++;
                     break;
                 }
-
               }
 
               $form_entry_val_import[] = array('entry_id' => $entry_id,
                 'field_id' => $field_id,
                 'value' => $fev['value']);
             }
-
           }
-          // var_dump('count is ' . $ctr);
-          // var_dump('1 file is ' . $ctr3);
-          // var_dump('2file is ' . $ctr2);
-          // var_dump('3file is ' . $ctr1);
-          // var_dump('none of the above ' . $ctr0);
 
           // import form entry values
           $errors = array();
@@ -184,17 +168,14 @@ class FormEntryValManager extends Module {
           break;
 
         case 'export':
-          if ($options['yaml'])
-          {
+          if ($options['yaml']) {
             //get the form entry values
             $form_entry_vals = $this->getQuerySet($options);
 
             //prepare form entry vals for yaml file
-            foreach ($form_entry_vals as $form_entry_val)
-            {
+            foreach ($form_entry_vals as $form_entry_val) {
               $object_type = self::getTypeById($form_entry_val->entry_id);
-              if($object_type == 'T')
-              {
+              if($object_type == 'T') {
                 $ticket_id = self::getTicketByFormEntry($form_entry_val->entry_id);
                 $ticket_number = self::getNumberById($ticket_id);
                 $form_id = self::getFormIdById($form_entry_val->field_id);
@@ -210,54 +191,41 @@ class FormEntryValManager extends Module {
 
                 //form entry values for ticket
                 array_push($form_entry_vals_clean, array(
-                '    - field_id' => $form_entry_val->field_id, '      field_label' => $field_label,
-                '      field_name' => $field_name, '      form_name' => self::getFormNameById($form_id),
-                '      value' => $form_entry_val->value
-                )
-                );
+                  '    - field_id' => $form_entry_val->field_id, '      field_label' => $field_label,
+                  '      field_name' => $field_name, '      form_name' => self::getFormNameById($form_id),
+                  '      value' => $form_entry_val->value
+                ));
 
                 //if value is for an attachment field, map file id(s)
-                if($field_type == 'files' && $form_entry_val->value != '[]')
-                {
+                if($field_type == 'files' && $form_entry_val->value != '[]') {
                   $arr = explode("\"", $form_entry_val->value);
 
-                  switch (count($arr))
-                  {
+                  switch (count($arr)) {
                     //just a file id(s) in [], sep by commas
                     // [2164,2167]
                     case 1:
                       $csarr = explode(",", $form_entry_val->value);
                       $file_signature[] = '';
                       //more than 1 file
-                      if(count($csarr) > 1)
-                      {
-                        foreach ($csarr as $c)
-                        {
+                      if(count($csarr) > 1) {
+                        foreach ($csarr as $c) {
                           if(strpos($c, '[') !== false)
-                          {
                             $c = ltrim($c, "[");
-                          }
                           elseif(strpos($c, ']') !== false)
-                          {
                             $c = rtrim($c, "]");
-                          }
                           $file_id = $c;
                           array_push($file_signature, self::getFileSignatureById($file_id));
                         }
                         $file_signature_clean[] = '';
-                        for ($i=0; $i < count($file_signature); $i++)
-                        {
+                        for ($i=0; $i < count($file_signature); $i++) {
                           if($file_signature[$i])
-                          {
                             array_push($file_signature_clean, $file_signature[$i]);
-                          }
                         }
                         $file_signature_string = implode(',', $file_signature_clean);
                         array_push($form_entry_vals_clean, array('      file_signature' => ltrim($file_signature_string, ',')));
                       }
                       //only 1 file
-                      else
-                      {
+                      else {
                         $csarr[0] = ltrim($csarr[0], "[");
                         $csarr[0] = rtrim($csarr[0], "]");
                         $file_id = $csarr[0];
@@ -339,18 +307,16 @@ class FormEntryValManager extends Module {
             unset($form_entry_vals);
 
             //export yaml file
-            echo (Spyc::YAMLDump($form_entry_vals_clean, false, 0));
+            // echo (Spyc::YAMLDump($form_entry_vals_clean, false, 0));
 
-            // if(!file_exists('form_entry_value.yaml'))
-            // {
-            //   $fh = fopen('form_entry_value.yaml', 'w');
-            //   fwrite($fh, (Spyc::YAMLDump($form_entry_vals_clean, false, 0)));
-            //   fclose($fh);
-            // }
-            // unset($form_entry_vals_clean);
+            if(!file_exists('form_entry_value.yaml')) {
+              $fh = fopen('form_entry_value.yaml', 'w');
+              fwrite($fh, (Spyc::YAMLDump($form_entry_vals_clean, false, 0)));
+              fclose($fh);
             }
-            else
-            {
+            unset($form_entry_vals_clean);
+            }
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -360,8 +326,6 @@ class FormEntryValManager extends Module {
                   fputcsv($this->stream,
                           array((string) $F->entry_id, $F->field_id, $F->value, $F->value_id));
             }
-
-
             break;
 
         case 'list':
@@ -373,7 +337,6 @@ class FormEntryValManager extends Module {
                     $F->getId(), $F->form_id
                 ));
             }
-
             break;
 
         default:
@@ -389,43 +352,32 @@ class FormEntryValManager extends Module {
         return $form_entry;
     }
 
-    static function create_form_entry_val($vars=array())
-    {
+    static function create_form_entry_val($vars=array()) {
       $FeVal = new DynamicFormEntryAnswer($vars);
 
       //if the entry value is for priority, set value_id
       if ($vars['field_id'] == 22)
-      {
         $FeVal->value_id = Priority::getIdByName($vars['value']);
-      }
 
       //return the form entry value
       return $FeVal;
 
     }
 
-    static function create($vars, &$error=false, $fetch=false)
-    {
+    static function create($vars, &$error=false, $fetch=false) {
         $FevVal = self::getIdByCombo($vars['entry_id'], $vars['field_id'], $vars['value']);
         //see if form entry val exists
         if ($fetch && ($FevVal != '0'))
-        {
-          // var_dump('match');
           return DynamicFormEntryAnswer::lookup($FevVal);
-        }
-        else
-        {
-          // var_dump('new ' . $vars['entry_id'] . ' ' .  $vars['field_id']);
+        else {
           $Fev = self::create_form_entry_val($vars);
           $Fev->save();
           return $Fev->entry_id;
         }
-
     }
 
     //form entry value (value field)
-    private function getIdByCombo($entry_id, $field_id,$value)
-    {
+    private function getIdByCombo($entry_id, $field_id,$value) {
       $row = DynamicFormEntryAnswer::objects()
           ->filter(array(
             'entry_id'=>$entry_id,
@@ -557,8 +509,7 @@ class FormEntryValManager extends Module {
         return $row ? $row[0] : 0;
     }
 
-    private function getFileIdBySignature($signature)
-    {
+    private function getFileIdBySignature($signature) {
       $row = AttachmentFile::objects()
           ->filter(array(
             'signature'=>$signature))
@@ -567,9 +518,8 @@ class FormEntryValManager extends Module {
 
       return $row ? $row[0] : 0;
     }
-    
-    private function getFileSignatureById($file_id)
-    {
+
+    private function getFileSignatureById($file_id) {
       $row = AttachmentFile::objects()
           ->filter(array(
             'id'=>$file_id))

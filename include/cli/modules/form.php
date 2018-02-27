@@ -14,7 +14,6 @@ class FormManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -27,7 +26,6 @@ class FormManager extends Module {
         );
 
     var $stream;
-
 
     function run($args, $options) {
 
@@ -46,7 +44,7 @@ class FormManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
@@ -64,7 +62,6 @@ class FormManager extends Module {
               //       found here
               $errors = array();
           }
-
             break;
 
         case 'export':
@@ -74,9 +71,10 @@ class FormManager extends Module {
 
               //format the array nicely
               foreach ($forms as $F) {
-                $clean[] = array('pid' => $F->get('pid'), 'type' => $F->get('type'), 'flags' => $F->get('flags'), 'title' => $F->getTitle(),
-                                 'instructions' => $F->getInstructions(), 'name' => $F->get('name'), 'notes' => $F->get('notes'),
-                                 'created' => $F->get('created'), 'updated' => $F->get('updated'));
+                $clean[] = array(
+                  'pid' => $F->get('pid'), 'type' => $F->get('type'), 'flags' => $F->get('flags'), 'title' => $F->getTitle(),
+                  'instructions' => $F->getInstructions(), 'name' => $F->get('name'), 'notes' => $F->get('notes'),
+                  'created' => $F->get('created'), 'updated' => $F->get('updated'));
               }
 
               //export yaml file
@@ -99,7 +97,6 @@ class FormManager extends Module {
                           array((string) $F->get('pid'), $F->get('type'), $F->get('flags'), $F->getTitle(), $F->getInstructions(),
                           $F->get('name'), $F->get('notes'), $F->get('created'), $F->get('updated')));
             }
-
             break;
 
         case 'list':
@@ -112,7 +109,6 @@ class FormManager extends Module {
                     $F->get('name'), $F->get('notes'), $F->get('created'), $F->get('updated')
                 ));
             }
-
             break;
 
         default:

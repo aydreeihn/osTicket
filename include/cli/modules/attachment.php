@@ -49,8 +49,7 @@ class AttachmentManager extends Module {
           $data = YamlDataParser::load($options['file']);
 
           //processing for thread entries
-          foreach ($data as $D)
-          {
+          foreach ($data as $D) {
             $ticket_id = Ticket::getIdByNumber($D['ticket_number']);
 
             $attachment_import[] = array('ticket_number' => $D['ticket_number'], 'ticket_id' => $ticket_id,
@@ -61,11 +60,8 @@ class AttachmentManager extends Module {
             );
           }
 
-          foreach ($attachment_import as $attachment)
-          {
-            $ticket_id = Ticket::getIdByNumber($attachment['ticket_number']);
-            if(!$ticket_id)
-            {
+          foreach ($attachment_import as $attachment) {
+            if(!$ticket_id = Ticket::getIdByNumber($attachment['ticket_number'])) {
               var_dump('Unknown Ticket Number: ' . $attachment['ticket_number']);
               continue;
             }
@@ -76,18 +72,11 @@ class AttachmentManager extends Module {
             $attachment['object_id'] = $thread_entry_id;
             $file_id = self::getFileIdBySignature($attachment['signature']);
             $attachment['id'] = $file_id;
-            // var_dump('thread id: ' . $thread_id . ', thread entry id: ' . $thread_entry_id . ' created on ' . $thread_entry_created . ', file id: ' . $file_id);
-            if($file_id != 0 && $thread_entry_id != 0)
-            {
+
+            if($file_id != 0 && $thread_entry_id != 0) {
               $new_att = self::createAttachment($attachment);
               if (!$new_att)
-              {
                 echo "Attachment not created";
-              }
-            }
-            else
-            {
-              var_dump('file id ' . $file_id . ' thread entry id ' . $thread_entry_id);
             }
 
           }
@@ -96,24 +85,20 @@ class AttachmentManager extends Module {
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the attachments
               $attachments = self::getQuerySet($options);
 
               //if thread entry has attachment, add attachment details to yaml file
-              foreach ($attachments as $att)
-              {
-                if($att->type == 'H')
-                {
+              foreach ($attachments as $att) {
+                if($att->type == 'H') {
                   $attachment_obj_id = $att->object_id;
                   $attachment_file_id = $att->file_id;
                   $attachment_inline = $att->inline;
 
                   $attachment_file = $att->getFile();
 
-                  if($attachment_obj_id != 0)
-                  {
+                  if($attachment_obj_id != 0) {
                     $thread_id = self::getThreadId($attachment_obj_id);
                     $thread_entry_created = self::getThreadEntryCreated($attachment_obj_id);
                     $ticket_id = self::getTicketId($thread_id);
@@ -134,18 +119,16 @@ class AttachmentManager extends Module {
               }
 
               //export yaml file
-              // echo Spyc::YAMLDump($attachments_clean, true, false, true);
+              // echo Spyc::YAMLDump($attachments_clean, true, false, false);
 
-              if(!file_exists('attachment.yaml'))
-              {
+              if(!file_exists('attachment.yaml')) {
                 $fh = fopen('attachment.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($attachments_clean)));
                 fclose($fh);
               }
               unset($attachments_clean);
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -171,8 +154,7 @@ class AttachmentManager extends Module {
         return $attachments;
     }
 
-    private function getIdByCombo($thread_id, $created)
-    {
+    private function getIdByCombo($thread_id, $created) {
       $row = ThreadEntry::objects()
           ->filter(array(
             'thread_id'=>$thread_id,
@@ -183,8 +165,7 @@ class AttachmentManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getThreadIdByCombo($object_id, $object_type)
-    {
+    private function getThreadIdByCombo($object_id, $object_type) {
       $row = Thread::objects()
           ->filter(array(
             'object_id'=>$object_id,
@@ -195,8 +176,7 @@ class AttachmentManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getFileIdBySignature($signature)
-    {
+    private function getFileIdBySignature($signature) {
       $row = AttachmentFile::objects()
           ->filter(array(
             'signature'=>$signature))
@@ -206,8 +186,7 @@ class AttachmentManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getThreadId($object_id)
-    {
+    private function getThreadId($object_id) {
       $row = ThreadEntry::objects()
           ->filter(array(
             'id'=>$object_id))
@@ -216,8 +195,7 @@ class AttachmentManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getThreadEntryCreated($object_id)
-    {
+    private function getThreadEntryCreated($object_id) {
       $row = ThreadEntry::objects()
           ->filter(array(
             'id'=>$object_id))
@@ -226,8 +204,7 @@ class AttachmentManager extends Module {
       return $row ? $row[0] : 0;
     }
 
-    private function getTicketId($thread_id)
-    {
+    private function getTicketId($thread_id) {
       $row = Thread::objects()
           ->filter(array(
             'id'=>$thread_id))
@@ -256,12 +233,10 @@ class AttachmentManager extends Module {
 
 
         // Record varying file names in the attachment record
-        if (is_array($file) && isset($file['name'])) {
+        if (is_array($file) && isset($file['name']))
             $filename = $file['name'];
-        }
-        elseif (is_string($name)) {
+        elseif (is_string($name))
             $filename = $name;
-        }
         if ($filename) {
             // This should be a noop since the ORM caches on PK
             $F = @$file['file'] ?: AttachmentFile::lookup($file['id']);

@@ -1,7 +1,7 @@
 <?php
 
 class StatusManager extends Module {
-    var $prologue = 'CLI department manager';
+    var $prologue = 'CLI ticket status manager';
 
     var $arguments = array(
         'action' => array(
@@ -13,7 +13,6 @@ class StatusManager extends Module {
             ),
         ),
     );
-
 
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
@@ -40,11 +39,11 @@ class StatusManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
@@ -61,33 +60,29 @@ class StatusManager extends Module {
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the statuses
               $statuses = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($statuses as $status)
-              {
+              foreach ($statuses as $status) {
                 $clean[] = array('name' => $status->getName(), 'state' => $status->getState(),
                                  'mode' => $status->get('mode'), 'sort' => $status->get('sort'),
                                  'properties' => $status->get('properties'),
-                                 'created' => $status->created, 'updated' => $status->updated);
+                                 'created' => $status->get('created'), 'updated' => $status->get('updated'));
               }
 
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('status.yaml'))
-              {
+              if(!file_exists('status.yaml')) {
                 $fh = fopen('status.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
 
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -96,9 +91,7 @@ class StatusManager extends Module {
               foreach (TicketStatus::objects() as $status)
                   fputcsv($this->stream,
                           array((string) $status->getName(), $status->getState(), $status->get('mode'), $status->get('sort'), $status->get('properties')));
-
             }
-
             break;
 
         case 'list':
@@ -110,7 +103,6 @@ class StatusManager extends Module {
                     $S->getName(), $S->getState(), $S->get('mode'), $S->get('sort'), $S->get('properties')
                 ));
             }
-
             break;
 
         default:
@@ -118,7 +110,6 @@ class StatusManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $statuses = TicketStatus::objects();
@@ -148,39 +139,17 @@ class StatusManager extends Module {
     static function __create($ht, &$error=false, $fetch=false) {
         global $ost;
 
-        //default ticket statuses
-        $defaults = array('Open', 'Resolved', 'Closed', 'Archived', 'Deleted',);
-
-        foreach ($defaults as $D)
-        {
-          if($ht['name'] == $D)
-          {
-            $skip = true;
-          }
-          else {
-            $skip = false;
-          }
-        }
-
         //see if status exists
-        // if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])) || $skip)
         if ($fetch && ($statusId=StatusManager::getIdByName($ht['name'])))
-        {
-          // var_dump('match');
           return TicketStatus::lookup($statusId);
-        }
         else {
-          // var_dump('new');
           $ht['properties'] = JsonDataEncoder::encode($ht['properties']);
           if (($status = self::create($ht)))
               $status->save(true);
 
           return $status;
         }
-
-
     }
-
 }
 Module::register('status', 'StatusManager');
 ?>

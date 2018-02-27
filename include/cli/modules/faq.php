@@ -14,7 +14,6 @@ class FAQManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -51,8 +50,7 @@ class FAQManager extends Module {
             //place file into array
             $data = YamlDataParser::load($options['file']);
 
-            foreach ($data as $D)
-            {
+            foreach ($data as $D) {
               $faq_import[] = array('category_id' => self::getIdByName($D['category_name']),
                 'ispublished' => $D['ispublished'], 'question' => $D['question'],
                 'answer' => $D['answer'], 'created' => $D['created'], 'updated' => $D['updated']);
@@ -67,20 +65,17 @@ class FAQManager extends Module {
                 //       found here
                 $errors = array();
             }
-
             break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the departments
               $faq = self::getQuerySet($options);
 
               $clean = array();
 
               //format the array nicely
-              foreach ($faq as $F)
-              {
+              foreach ($faq as $F) {
                 $clean[] = array('category_name' => self::getNameById($F->category_id),
                 'ispublished' => $F->ispublished, 'question' => $F->getQuestion(),
                 'answer' => $F->getAnswer(), 'created' => $F->created, 'updated' => $F->updated);
@@ -89,16 +84,13 @@ class FAQManager extends Module {
               //export yaml file
               // echo (Spyc::YAMLDump($clean));
 
-              if(!file_exists('faq.yaml'))
-              {
+              if(!file_exists('faq.yaml')) {
                 $fh = fopen('faq.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -108,7 +100,6 @@ class FAQManager extends Module {
                   fputcsv($this->stream,
                           array((string) $faq->getCategoryId(), boolval($faq->ispublished), $faq->getQuestion(), $faq->getAnswer()));
             }
-
             break;
 
         case 'list':
@@ -120,7 +111,6 @@ class FAQManager extends Module {
                     $F->getCategoryId(), boolval($F->ispublished), $F->getQuestion(), $F->getAnswer()
                 ));
             }
-
             break;
 
         default:
@@ -128,7 +118,6 @@ class FAQManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $faq = FAQ::objects();
@@ -169,22 +158,15 @@ class FAQManager extends Module {
          return $faq;
      }
 
-    //adriane
     private function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($faqId=self::getIdByQuestion($vars['question'])))
-        {
-          // var_dump('match');
           return FAQ::lookup($faqId);
-        }
-        else
-        {
-          // var_dump('new');
+        else {
           $faq = self::create($vars);
           $faq->save();
           return $faq->faq_id;
         }
-
     }
 }
 Module::register('faq', 'FAQManager');

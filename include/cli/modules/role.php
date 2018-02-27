@@ -14,7 +14,6 @@ class RoleManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -39,11 +38,11 @@ class RoleManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
@@ -60,25 +59,21 @@ class RoleManager extends Module {
         break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the roles
               $roles = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($roles as $R)
-              {
-                $clean[] = array('flags' => $R->flags, 'name' => $R->getName(),
-                                 'notes' => $R->notes, 'permissions' => $R->permissions,
-                                 'created' => $R->created, 'updated' => $R->updated);
-
+              foreach ($roles as $R) {
+                $clean[] = array(
+                  'flags' => $R->flags, 'name' => $R->getName(), 'notes' => $R->notes,
+                  'permissions' => $R->permissions, 'created' => $R->created, 'updated' => $R->updated);
               }
 
               //export yaml file
               // echo (Spyc::YAMLDump($clean));
 
-              if(!file_exists('role.yaml'))
-              {
+              if(!file_exists('role.yaml')) {
                 //create export file
                 $fh = fopen('role.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
@@ -88,10 +83,8 @@ class RoleManager extends Module {
                 //rename('/var/www/html/osticket.1.10/role.yaml', '/var/www/html/osticket.1.10/exports/role.yaml');
               }
               // $path = glob('role.yaml');
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -101,7 +94,6 @@ class RoleManager extends Module {
                   fputcsv($this->stream,
                           array((string) $role->flags, $role->getName(), $role->notes, $R->permissions));
             }
-
             break;
 
         case 'list':
@@ -113,7 +105,6 @@ class RoleManager extends Module {
                     $R->flags, $R->getName(), $R->notes, $R->permissions
                 ));
             }
-
             break;
 
         default:
@@ -121,7 +112,6 @@ class RoleManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $roles = RoleModel::objects();
@@ -137,11 +127,8 @@ class RoleManager extends Module {
     static function __create($vars, &$errors, $fetch=false) {
         //see if role already exists
         if ($fetch && ($roleId=Role::getIdByName($vars['name'])))
-        {
           return $roleId;
-        }
-        else
-        {
+        else {
           $role = self::create($vars);
           if ($vars['permissions'])
               $role->updatePerms($vars['permissions']);

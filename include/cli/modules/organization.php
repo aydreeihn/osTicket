@@ -14,7 +14,6 @@ class OrganizationManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -40,14 +39,13 @@ class OrganizationManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
-          if($options['yaml'])
-          {
+          if($options['yaml']) {
             //place file into array
             $data = YamlDataParser::load($options['file']);
 
@@ -60,10 +58,8 @@ class OrganizationManager extends Module {
                 //       found here
                 $errors = array();
             }
-
           }
-          elseif($options['csv'])
-          {
+          elseif($options['csv']) {
             if (!$options['file'])
                 $this->fail('Import CSV file required!');
             elseif (!($this->stream = fopen($options['file'], 'rb')))
@@ -87,41 +83,31 @@ class OrganizationManager extends Module {
             }
           }
           else
-          {
             echo 'Please choose import type of --yaml or --csv' . "\n" ;
-          }
-
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the statuses
               $organizations = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($organizations as $organization)
-              {
+              foreach ($organizations as $organization) {
                 $clean[] = array('name' => $organization->getName(), 'manager' => $organization->getAccountManager(),
                 'status' => $organization->get('status'), 'domain' => $organization->get('domain'),
                 'extra' => $organization->get('extra'), 'created' => $organization->created, 'updated' => $organization->updated);
-
               }
-
 
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('organization.yaml'))
-              {
+              if(!file_exists('organization.yaml')) {
                 $fh = fopen('organization.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -131,7 +117,6 @@ class OrganizationManager extends Module {
                   fputcsv($this->stream,
                           array((string) $organization->getName(), $organization->getAccountManager(), $organization->get('status'), $organization->get('domain'), $organization->get('extra')));
             }
-
             break;
 
         case 'list':
@@ -143,7 +128,6 @@ class OrganizationManager extends Module {
                     $O->getName(), $O->getAccountManager(), $O->get('status'), $O->get('domain'), $O->get('extra')
                 ));
             }
-
             break;
 
         default:
@@ -170,7 +154,7 @@ class OrganizationManager extends Module {
 
     static function create($vars=false) {
         $org = new Organization($vars);
-        // $org->setStatus(Organization::SHARE_PRIMARY_CONTACT);
+
         return $org;
     }
 
@@ -178,32 +162,22 @@ class OrganizationManager extends Module {
     static function __create($ht, &$error=false, $fetch=false) {
         //see if org exists
         if ($fetch && ($orgId=self::getIdByName($ht['name'])) || $ht['name'] == null)
-        {
-          // var_dump('found match ' . $ht['name']);
           return Organization::lookup($orgId);
-        }
-        else
-        {
-          // var_dump('new ' . $ht['name']);
+        else {
           $org = static::create($ht);
 
           // Add dynamic data (if any)
-          if ($ht['fields'])
-          {
+          if ($ht['fields']) {
               $org->save(true);
               $org->addDynamicData($ht['fields']);
           }
           //otherwise create without dynamic fields
           else
-          {
             $org->save(true);
-          }
 
           return $org;
         }
-
     }
-
 }
 Module::register('organization', 'OrganizationManager');
 ?>

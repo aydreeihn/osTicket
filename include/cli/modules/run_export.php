@@ -1,5 +1,4 @@
 <?php
-//require_once('role.php');
 include('role.php');
 include('topic.php');
 include('status.php');
@@ -14,8 +13,6 @@ include('ticket.php');
 
 class RunExports extends Module
 {
-
-
   var $prologue = 'CLI role manager';
 
   var $arguments = array(
@@ -28,7 +25,6 @@ class RunExports extends Module
           ),
       ),
   );
-
 
   var $options = array(
       'file' => array('-f', '--file', 'metavar'=>'path',
@@ -50,13 +46,12 @@ class RunExports extends Module
       switch ($args['action']) {
 
       case 'export':
-          if ($options['yaml'])
-          {
+          if ($options['yaml']) {
             $action = array('action' => 'export');
             $option = array('yaml');
 
             //run exports
-             $role = RoleManager::run($action, 'yaml');
+            // $role = RoleManager::run($action, 'yaml');
             // $topic = TopicManager::run($action, 'yaml');
             // $status = StatusManager::run($action, 'yaml');
             // $sla = SLAManager::run($action, 'yaml');
@@ -67,22 +62,13 @@ class RunExports extends Module
             // $agent = AgentManager::run($action, 'yaml');
             // $user = UserManager::run($action, 'yaml');
             // $ticket = TicketManager::run($action, 'yaml');
-
-
-
-
           }
-
           break;
-
-
       default:
           $this->stderr->write('Unknown action!');
       }
       @fclose($this->stream);
   }
-
-
 }
 Module::register('run_export', 'RunExports');
 ?>

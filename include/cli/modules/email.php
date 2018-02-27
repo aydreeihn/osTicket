@@ -14,7 +14,6 @@ class EmailManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -45,11 +44,11 @@ class EmailManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
@@ -66,22 +65,18 @@ class EmailManager extends Module {
         break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the departments
               $emails = $this->getQuerySet($options);
 
               //format the array nicely
               foreach ($emails as $E)
-              {
                 $clean[] = array('priority_id' => $E->getPriorityId(), 'dept_id' => $E->getDeptId(), 'email' => $E->getEmail(), 'name' => $E->getName());
-              }
 
               //export yaml file
               echo (Spyc::YAMLDump($clean));
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -91,7 +86,6 @@ class EmailManager extends Module {
                   fputcsv($this->stream,
                           array((string) $email->getId(), $email->getPriorityId(), $email->getDept(), $email->getEmail(), $email->getName()));
             }
-
             break;
 
         case 'list':
@@ -103,7 +97,6 @@ class EmailManager extends Module {
                     $E->getId(), $E->getPriorityId(), $E->getDept(), $E->getEmail(), $E->getName()
                 ));
             }
-
             break;
 
         default:
@@ -111,7 +104,6 @@ class EmailManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $emails = Email::objects();
@@ -122,19 +114,12 @@ class EmailManager extends Module {
     static function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
         if ($fetch && ($emailId=Email::getIdByEmail($vars['email'])))
-        {
-          var_dump('match');
           return Email::lookup($emailId);
-        }
-        else
-        {
-          var_dump('new');
+        else {
           $email = Email::create($vars);
           $email->save();
           return $email->email_id;
         }
-
-
     }
 }
 Module::register('email', 'EmailManager');

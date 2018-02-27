@@ -14,7 +14,6 @@ class FAQCategoryManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -63,16 +62,14 @@ class FAQCategoryManager extends Module {
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the faq categories
               $faq_category = self::getQuerySet($options);
 
               $clean = array();
 
               //format the array nicely
-              foreach ($faq_category as $C)
-              {
+              foreach ($faq_category as $C) {
                 $clean[] = array('ispublic' => $C->ispublic,
                 'name' => $C->getName(), 'description' => $C->getDescription(),
                 'notes' => $C->getNotes(), 'created' => $C->created,
@@ -82,15 +79,13 @@ class FAQCategoryManager extends Module {
               //export yaml file
               // echo (Spyc::YAMLDump($clean));
 
-              if(!file_exists('faq_category.yaml'))
-              {
+              if(!file_exists('faq_category.yaml')) {
                 $fh = fopen('faq_category.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -100,8 +95,6 @@ class FAQCategoryManager extends Module {
                   fputcsv($this->stream,
                           array((string) $faq_category->getId(), boolval($faq_category->ispublic), $faq_category->getName(), $faq_category->getDescription(), $faq_category->getNotes()));
             }
-
-
             break;
 
         case 'list':
@@ -113,7 +106,6 @@ class FAQCategoryManager extends Module {
                     $F->getCategoryId(), boolval($F->ispublished), $F->getQuestion(), $F->getAnswer()
                 ));
             }
-
             break;
 
         default:
@@ -136,14 +128,10 @@ class FAQCategoryManager extends Module {
 
     static function __create($vars, &$error=false, $fetch=false) {
         //see if staff exists
-        if ($fetch && ($catId=Category::findIdByName($vars['name'])))
-        {
-          // var_dump('match');
+        if ($fetch && ($catId=Category::findIdByName($vars['name']))) {
           return Category::lookup($catId);
         }
-        else
-        {
-          // var_dump('new');
+        else {
           $cat = self::create($vars);
           $cat->save();
           return $cat;

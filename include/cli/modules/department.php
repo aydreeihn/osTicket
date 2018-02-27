@@ -14,7 +14,6 @@ class DepartmentManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -46,20 +45,17 @@ class DepartmentManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
 
-          foreach ($data as $D)
-          {
+          foreach ($data as $D) {
             $manager_id = self::getStaffIdByEmail($D['manager_email']);
-            // var_dump('passing in ' . $D['manager_email']);
-            // var_dump('getting back ' . $manager_id);
 
             $department_import[] = array('manager_id' => $manager_id,
               'name' => $D['name'], 'signature' => $D['signature'],
@@ -78,51 +74,42 @@ class DepartmentManager extends Module {
               //       found here
               $errors = array();
           }
-
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the departments
               $departments = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($departments as $department)
-              {
-                $clean[] = array('manager_email' => self::getStaffEmailById($department->manager_id),
-                  'name' => $department->getName(), 'signature' => $department->getSignature(),
-                  'ispublic' => $department->ispublic,
-                  'group_membership' => $department->group_membership, 'ticket_auto_response' => $department->ticket_auto_response,
-                  'message_auto_response' => $department->message_auto_response, 'updated' => $department->updated,
-                  'created' => $department->created);
-
+              foreach ($departments as $d) {
+                $clean[] = array('manager_email' => self::getStaffEmailById($d->manager_id),
+                  'name' => $d->getName(), 'signature' => $d->getSignature(),
+                  'ispublic' => $d->ispublic,
+                  'group_membership' => $d->group_membership, 'ticket_auto_response' => $d->ticket_auto_response,
+                  'message_auto_response' => $d->message_auto_response, 'updated' => $d->updated,
+                  'created' => $d->created);
               }
 
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('department.yaml'))
-              {
+              if(!file_exists('department.yaml')) {
                 $fh = fopen('department.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
 
               fputcsv($this->stream, array('Name', 'Signature', 'ispublic', 'group_membership'));
-              foreach (Dept::objects() as $department)
+              foreach (Dept::objects() as $d)
                   fputcsv($this->stream,
-                          array((string) $department->getName(), $department->getSignature(), boolval($department->ispublic), boolval($department->group_membership)));
-
+                          array((string) $d->getName(), $d->getSignature(), boolval($d->ispublic), boolval($d->group_membership)));
             }
-
             break;
 
         case 'list':
@@ -134,7 +121,6 @@ class DepartmentManager extends Module {
                     $D->id, $D->getName(), $D->getSignature(), boolval($D->ispublic), boolval($D->group_membership)
                 ));
             }
-
             break;
 
         default:
@@ -142,7 +128,6 @@ class DepartmentManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $departments = Dept::objects();
@@ -183,7 +168,6 @@ class DepartmentManager extends Module {
 
        return $dept;
     }
-
 }
 Module::register('department', 'DepartmentManager');
 ?>

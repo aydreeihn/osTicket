@@ -17,7 +17,6 @@ class UserManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -35,7 +34,6 @@ class UserManager extends Module {
         'yaml' => array('-yaml', '--yaml', 'default'=>false,
             'action'=>'store_true', 'help'=>'Export or Import in yaml format'),
 
-
         // -- Search criteria
         'account' => array('-A', '--account', 'type'=>'bool', 'metavar'=>'bool',
             'help' => 'Search for users based on activation status'),
@@ -51,13 +49,11 @@ class UserManager extends Module {
 
     var $stream;
 
-
     function run($args, $options) {
 
         Bootstrap::connect();
 
-        switch ($args['action'])
-        {
+        switch ($args['action']) {
         case 'import':
           // Properly detect Macintosh style line endings
           ini_set('auto_detect_line_endings', true);
@@ -70,25 +66,22 @@ class UserManager extends Module {
           if (!($this->stream = fopen($options['file'], 'rb')))
               $this->fail("Unable to open input file [{$options['file']}]");
 
-          if ($options['yaml'])
-          {
+          if ($options['yaml']) {
             //place file into array
             $data = YamlDataParser::load($options['file']);
 
-            foreach ($data as $D)
-            {
+            foreach ($data as $D) {
               $org_id = self::getIdByName($D['org_id']);
 
               $user_import[] = array('ID' => $D['ID'], 'org_id' => $org_id,
-              'name' => $D['name'], 'email' => $D['email'],
-              'created' => $D['created'], 'updated' => $D['updated']
+                'name' => $D['name'], 'email' => $D['email'],
+                'created' => $D['created'], 'updated' => $D['updated']
               );
             }
 
             //create departments with a unique name as a new record
             $errors = array();
-            foreach ($user_import as $o)
-            {
+            foreach ($user_import as $o) {
                 if ('User::fromVars' && is_callable('User::fromVars'))
                     @call_user_func_array('User::fromVars', array($o, true, false, true));
                 // TODO: Add a warning to the success page for errors
@@ -96,8 +89,7 @@ class UserManager extends Module {
                 $errors = array();
             }
           }
-          elseif ($options['csv'])
-          {
+          elseif ($options['csv']) {
             $extras = array();
             if ($options['org']) {
                 if (!($org = Organization::lookup($options['org'])))
@@ -111,20 +103,16 @@ class UserManager extends Module {
                 $this->fail($status);
           }
           else
-          {
             echo 'Please choose import type of --yaml or --csv' . "\n" ;
-          }
           break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the users
               $users = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($users as $U)
-              {
+              foreach ($users as $U) {
                 $clean[] = array('ID' => $U->id, 'org_id' => $U->getOrganization(),
                 'name' => $U->getName(), 'email' => $U->getDefaultEmail(),
                 'created' => $U->created, 'updated' => $U->updated);
@@ -133,15 +121,13 @@ class UserManager extends Module {
               //export yaml file
               // echo (Spyc::YAMLDump($clean));
 
-              if(!file_exists('user.yaml'))
-              {
+              if(!file_exists('user.yaml')) {
                 $fh = fopen('user.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -151,7 +137,6 @@ class UserManager extends Module {
                   fputcsv($this->stream,
                           array((string) $user->getName(), $user->getEmail()));
             }
-
             break;
 
         case 'activate':
@@ -181,7 +166,6 @@ class UserManager extends Module {
                     }
                 }
             }
-
             break;
 
         case 'lock':
@@ -197,7 +181,6 @@ class UserManager extends Module {
                 $account->setFlag(UserAccountStatus::LOCKED);
                 $account->save();
             }
-
             break;
 
         case 'list':
@@ -210,7 +193,6 @@ class UserManager extends Module {
                     ($O = $U->getOrganization()) ? " ({$O->getName()})" : ''
                 ));
             }
-
             break;
 
         case 'set-password':
@@ -276,7 +258,6 @@ class UserManager extends Module {
                 $users->filter(array('id'=>$V));
                 break;
             }
-
         }
         return $users;
     }

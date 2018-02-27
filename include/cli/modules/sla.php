@@ -1,19 +1,18 @@
 <?php
 
 class SLAManager extends Module {
-    var $prologue = 'CLI department manager';
+    var $prologue = 'CLI SLA manager';
 
     var $arguments = array(
         'action' => array(
             'help' => 'Action to be performed',
             'options' => array(
-                'import' => 'Import statuses from yaml file',
-                'export' => 'Export statuses from the system to CSV or yaml',
-                'list' => 'List statuses based on search criteria',
+                'import' => 'Import SLAs from yaml file',
+                'export' => 'Export SLAs from the system to CSV or yaml',
+                'list' => 'List SLAs based on search criteria',
             ),
         ),
     );
-
 
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
@@ -40,11 +39,11 @@ class SLAManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
-          $this->fail("Unable to open input file [{$options['file']}]");
+            $this->fail("Unable to open input file [{$options['file']}]");
 
           //place file into array
           $data = YamlDataParser::load($options['file']);
@@ -58,18 +57,15 @@ class SLAManager extends Module {
               //       found here
               $errors = array();
           }
-
         break;
 
         case 'export':
-            if ($options['yaml'])
-            {
+            if ($options['yaml']) {
               //get the slas
               $slas = self::getQuerySet($options);
 
               //format the array nicely
-              foreach ($slas as $sla)
-              {
+              foreach ($slas as $sla) {
                 $clean[] = array('flags' => $sla->get('flags'), 'grace_period' => $sla->getGracePeriod(),
                                  'name' => $sla->getName(), 'notes' => $sla->get('notes'),
                                 'created' => $sla->created, 'updated' => $sla->updated);
@@ -78,16 +74,13 @@ class SLAManager extends Module {
               //export yaml file
               // echo Spyc::YAMLDump(array_values($clean), true, false, true);
 
-              if(!file_exists('sla.yaml'))
-              {
+              if(!file_exists('sla.yaml')) {
                 $fh = fopen('sla.yaml', 'w');
                 fwrite($fh, (Spyc::YAMLDump($clean)));
                 fclose($fh);
               }
-
             }
-            else
-            {
+            else {
               $stream = $options['file'] ?: 'php://stdout';
               if (!($this->stream = fopen($stream, 'c')))
                   $this->fail("Unable to open output file [{$options['file']}]");
@@ -96,9 +89,7 @@ class SLAManager extends Module {
               foreach (SLA::objects() as $sla)
                   fputcsv($this->stream,
                           array((string) $sla->get('flags'), $sla->getGracePeriod(), $sla->getName(), $sla->get('notes')));
-
             }
-
             break;
 
         case 'list':
@@ -110,7 +101,6 @@ class SLAManager extends Module {
                     $S->getName(), $S->getState(), $S->get('mode'), $S->get('sort'), $S->get('properties')
                 ));
             }
-
             break;
 
         default:
@@ -118,7 +108,6 @@ class SLAManager extends Module {
         }
         @fclose($this->stream);
     }
-
 
     function getQuerySet($options, $requireOne=false) {
         $slas = SLA::objects();
@@ -134,19 +123,14 @@ class SLAManager extends Module {
     static function __create($vars, &$errors=array(), $fetch=false) {
         //see if sla exists
         if ($fetch && ($slaId=SLA::getIdByName($vars['name'])))
-        {
           return SLA::lookup($slaId);
-        }
         //otherwise create new sla
-        else
-        {
+        else {
           $sla = self::create($vars);
           $sla->save();
           return $sla;
         }
-
     }
-
 }
 Module::register('sla', 'SLAManager');
 ?>

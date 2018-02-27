@@ -14,7 +14,6 @@ class UserEmailManager extends Module {
         ),
     );
 
-
     var $options = array(
         'file' => array('-f', '--file', 'metavar'=>'path',
             'help' => 'File or stream to process'),
@@ -27,7 +26,6 @@ class UserEmailManager extends Module {
         );
 
     var $stream;
-
 
     function run($args, $options) {
 
@@ -46,7 +44,7 @@ class UserEmailManager extends Module {
 
           //check command line option
           if (!$options['file'] || $options['file'] == '-')
-          $options['file'] = 'php://stdin';
+            $options['file'] = 'php://stdin';
 
           //make sure the file can be opened
           if (!($this->stream = fopen($options['file'], 'rb')))
@@ -67,7 +65,6 @@ class UserEmailManager extends Module {
             if ('self::create' && is_callable('self::create'))
                 @call_user_func_array('self::create', array($D, &$errors, true));
           }
-
             break;
 
         case 'export':
@@ -100,7 +97,6 @@ class UserEmailManager extends Module {
                   fputcsv($this->stream,
                           array((string) User::getNameById($E->get('user_id')), $E->get('flags'), $E->get('address')));
             }
-
             break;
 
         case 'list':
@@ -112,7 +108,6 @@ class UserEmailManager extends Module {
                     User::getNameById($E->get('user_id')), $E->get('flags'), $E->get('address')
                 ));
             }
-
             break;
 
         default:
