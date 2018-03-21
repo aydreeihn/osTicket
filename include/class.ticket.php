@@ -1026,12 +1026,13 @@ implements RestrictedAccess, Threadable, Searchable {
     static function getMissingRequiredFields($ticket, $ids=false) {
         // Check for fields disabled by Help Topic
         $disabled = array();
-        foreach ($ticket->getTopic()->forms as $f) {
+        foreach (($ticket->getTopic() ? $ticket->getTopic()->forms : $ticket->entries) as $f) {
             $extra = JsonDataParser::decode($f->extra);
 
             if (!empty($extra['disable']))
                 $disabled[] = $extra['disable'];
         }
+
         $disabled = !empty($disabled) ? call_user_func_array('array_merge', $disabled) : NULL;
 
         if ($ids)
