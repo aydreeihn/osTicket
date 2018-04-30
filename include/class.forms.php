@@ -1836,7 +1836,9 @@ class ChoiceField extends FormField {
         $selection = array();
         if ($value && is_array($value)) {
             $selection = $value;
-        } elseif (isset($choices[$value]))
+        } elseif (is_object($value) && get_class($value) == 'User')
+          $selection[] = $value->getId();
+        elseif (isset($choices[$value]))
             $selection[] = $choices[$value];
         elseif ($this->get('default'))
             $selection[] = $choices[$this->get('default')];
@@ -2956,6 +2958,67 @@ class AssigneeField extends ChoiceField {
 FormField::addFieldTypes(/*@trans*/ 'Dynamic Fields', function() {
     return array(
         'assignee' => array(__('Assignee'), AssigneeField),
+    );
+});
+
+class UserField extends ChoiceField {
+    static $widget = 'UserWidget';
+
+    function hasIdValue() {
+        return true;
+    }
+
+    function parse($id) {
+        return $this->to_php(null, $id);
+    }
+
+    function to_php($value, $id=false) {
+        if ($value instanceof User)
+            return $value;
+        if (is_array($id)) {
+            reset($id);
+            $id = key($id);
+        }
+        elseif (is_array($value))
+            list($value, $id) = $value;
+        elseif ($id === false)
+            $id = $value;
+        if ($id)
+            return User::lookup($id);
+    }
+
+    function to_database($user) {
+        return ($user instanceof User)
+            ? array($user->getName(), $user->getId())
+            : $user;
+    }
+
+    function toString($value) {
+        return ($value instanceof User) ? $value->getName() : $value;
+    }
+
+    function whatChanged($before, $after) {
+        return FormField::whatChanged($before, $after);
+    }
+
+    function searchable($value) {
+        return null;
+    }
+
+    function getConfigurationOptions() {
+        return array(
+            'prompt' => new TextboxField(array(
+                'id'=>2, 'label'=>__('Prompt'), 'required'=>false, 'default'=>'',
+                'hint'=>__('Leading text shown before a value is selected'),
+                'configuration'=>array('size'=>40, 'length'=>40),
+            )),
+        );
+    }
+
+}
+FormField::addFieldTypes(/*@trans*/ 'Dynamic Fields', function() {
+    return array(
+        'user' => array(__('User'), UserField),
     );
 });
 
@@ -4431,6 +4494,46 @@ class FileUploadWidget extends Widget {
         }
 
         return $ids;
+    }
+}
+
+/**
+* UserWidget extends ChoicesWidget to add select2 user search options
+**/
+class UserWidget extends ChoicesWidget {
+
+    function render($options=array()) {
+        parent::render($options);
+        ?>
+        <script type="text/javascript">
+            $(function() {
+                $('#<?php echo $this->id; ?>').select2({
+                    width: '350px',
+                    minimumInputLength: 3,
+                    ajax: {
+                      url: "ajax.php/users/local",
+                      dataType: 'json',
+                      data: function (params) {
+                        return {
+                          q: params.term,
+                        };
+                      },
+                      processResults: function (data) {
+                        return {
+                          results: $.map(data, function (item) {
+                            return {
+                              text: item.name,
+                              slug: item.slug,
+                              id: item.id
+                            }
+                          })
+                        };
+                      }
+                    }
+                });
+            });
+        </script>
+      <?php
     }
 }
 
