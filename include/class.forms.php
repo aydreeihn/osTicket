@@ -2968,6 +2968,14 @@ class UserField extends ChoiceField {
         return true;
     }
 
+    function getChoices() {
+      if ($this->getClean()) {
+        $data[$this->getClean()->id] = $this->getClean()->name;
+        return $data;
+      }
+      return null;
+    }
+
     function parse($id) {
         return $this->to_php(null, $id);
     }
@@ -4508,6 +4516,7 @@ class UserWidget extends ChoicesWidget {
         <script type="text/javascript">
             $(function() {
                 $('#<?php echo $this->id; ?>').select2({
+                    allowClear: true,
                     width: '350px',
                     minimumInputLength: 3,
                     ajax: {
@@ -4534,6 +4543,21 @@ class UserWidget extends ChoicesWidget {
             });
         </script>
       <?php
+    }
+
+    function getValue() {
+      if ($_POST) {
+        $id = ltrim($this->id, '_');
+        if ($user = User::lookup((int)$_POST[$id][0]))
+          $data[$user->getId()] = $user->getName()->name;
+        return $data;
+      }
+      elseif ($this->field->getAnswer()) {
+        $data[$this->field->getAnswer()->getValue()->id] = $this->field->getAnswer()->getValue()->name;
+        return $data;
+      }
+      return null;
+
     }
 }
 
