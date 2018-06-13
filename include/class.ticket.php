@@ -2677,6 +2677,10 @@ implements RestrictedAccess, Threadable, Searchable {
             // TODO: Can collaborators add others?
             if ($collabs) {
                 $this->logEvent('collab', array('add' => $collabs), $message->user);
+
+                // Allow audit and other external interaction
+                $type = array('type' => 'Collaborator', 'data' => array('name' => $this->getNumber(), 'add' => $collabs));
+                Signal::send('object.created', $this, $type);
             }
         }
 
@@ -2759,6 +2763,10 @@ implements RestrictedAccess, Threadable, Searchable {
                 $sentlist[] = $staff->getEmail();
             }
         }
+        // Allow audit and other external interaction
+        $type = array('type' => 'Message', 'uid' => $vars['userId']);
+        Signal::send('object.created', $this, $type);
+
         return $message;
     }
 
@@ -3801,6 +3809,10 @@ implements RestrictedAccess, Threadable, Searchable {
 
         // Start tracking ticket lifecycle events (created should come first!)
         $ticket->logEvent('created', null, $thisstaff ?: $user);
+
+        // Allow audit and other external interaction
+        $type = array('type' => 'Created');
+        Signal::send('object.created', $ticket, $type);
 
         // Add organizational collaborators
         if ($org && $org->autoAddCollabs()) {
