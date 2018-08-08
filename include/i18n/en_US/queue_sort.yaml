@@ -9,21 +9,29 @@
   columns: '["-cdata__priority","-lastupdate"]'
 
 - id: 2
+  name: Most Recently Updated
+  columns: '["-lastupdate"]'
+
+- id: 3
   name: Priority + Most Recently Created
   columns: '["-cdata__priority","-created"]'
 
-- id: 3
+- id: 4
   name: Priority + Due Date
   columns: '["-cdata__priority","-est_duedate"]'
 
-- id: 4
+- id: 5
   name: Due Date
   columns: '["-est_duedate"]'
 
-- id: 5
+- id: 6
+  name: Most Recently Answered
+  columns: '["-isanswered"]'
+
+- id: 7
   name: Closed Date
   columns: '["-closed"]'
 
-- id: 6
+- id: 8
   name: Create Date
   columns: '["-created"]'
