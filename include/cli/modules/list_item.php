@@ -61,9 +61,12 @@ class ListItemManager extends Module {
                 $D['list_id'] = $list_id;
                 unset($D['list_name']);
 
-                //create cannes responses
-                if ('self::create' && is_callable('self::create'))
-                    @call_user_func_array('self::create', array($D, &$errors, true));
+                //create list items
+                if ('self::__create' && is_callable('self::__create'))
+                        @call_user_func_array('self::__create', array($D, &$errors, true));
+                    // TODO: Add a warning to the success page for errors
+                    //       found here
+                    $errors = array();
               }
                 break;
             case 'export':
@@ -123,10 +126,29 @@ class ListItemManager extends Module {
     }
 
     static function create($vars=false) {
-        $listItem = new DynamicListItem($vars);
-        $listItem->save();
+        $itemId = new DynamicListItem($vars);
+        return $itemId;
+    }
 
-        return $listItem;
+    private function __create($vars, &$error=false, $fetch=false) {
+        //see if list item exists
+        if ($fetch && ($itemId=self::getIdByValue($vars['value'])))
+          return DynamicListItem::lookup($fieldId);
+        else {
+          $itemId = self::create($vars);
+          $itemId->save();
+          return $itemId->id;
+        }
+    }
+
+    private function getIdByValue($value) {
+      $row = DynamicListItem::objects()
+          ->filter(array(
+            'value'=>$value))
+          ->values_flat('id')
+          ->first();
+
+      return $row ? $row[0] : 0;
     }
 }
 Module::register('list_item', 'ListItemManager');

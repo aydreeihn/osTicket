@@ -62,8 +62,11 @@ class FormFieldManager extends Module {
             unset($D['form_title']);
 
             //create form fields
-            if ('self::create' && is_callable('self::create'))
-                @call_user_func_array('self::create', array($D, &$errors, true));
+            if ('self::__create' && is_callable('self::__create'))
+                    @call_user_func_array('self::__create', array($D, &$errors, true));
+                // TODO: Add a warning to the success page for errors
+                //       found here
+                $errors = array();
           }
             break;
 
@@ -129,9 +132,31 @@ class FormFieldManager extends Module {
 
     static function create($vars=false) {
         $formField = new DynamicFormField($vars);
-        $formField->save();
-
         return $formField;
+    }
+
+    private function __create($vars, &$error=false, $fetch=false) {
+        //see if form field exists
+        if ($fetch && ($fieldId=self::getIdByCombo($vars['name'], $vars['label'], $vars['type'], $vars['form_id'])))
+          return DynamicFormField::lookup($fieldId);
+        else {
+          $formField = self::create($vars);
+          $formField->save();
+          return $formField->id;
+        }
+    }
+
+    private function getIdByCombo($name, $label, $type, $formId) {
+      $row = DynamicFormField::objects()
+          ->filter(array(
+            'name'=>$name,
+            'label'=>$label,
+            'type'=>$type,
+            'form_id'=>$formId))
+          ->values_flat('id')
+          ->first();
+
+      return $row ? $row[0] : 0;
     }
 }
 Module::register('form_field', 'FormFieldManager');

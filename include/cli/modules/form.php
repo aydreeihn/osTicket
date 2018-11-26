@@ -56,11 +56,11 @@ class FormManager extends Module {
           //create forms
           $errors = array();
           foreach ($data as $o) {
-              if ('self::create' && is_callable('self::create'))
-                  @call_user_func_array('self::create', array($o, &$errors, true));
-              // TODO: Add a warning to the success page for errors
-              //       found here
-              $errors = array();
+              if ('self::__create' && is_callable('self::__create'))
+                      @call_user_func_array('self::__create', array($o, &$errors, true));
+                  // TODO: Add a warning to the success page for errors
+                  //       found here
+                  $errors = array();
           }
             break;
 
@@ -125,9 +125,29 @@ class FormManager extends Module {
 
     static function create($vars=false) {
         $form = new DynamicForm($vars);
-        $form->save();
-
         return $form;
+    }
+
+    private function __create($vars, &$error=false, $fetch=false) {
+        //see if form exists
+        if ($fetch && ($formId=self::getIdByCombo($vars['type'], $vars['title'])))
+          return DynamicForm::lookup($formId);
+        else {
+          $form = self::create($vars);
+          $form->save();
+          return $form->id;
+        }
+    }
+
+    private function getIdByCombo($type, $title) {
+      $row = DynamicForm::objects()
+          ->filter(array(
+            'type'=>$type,
+            'title'=>$title))
+          ->values_flat('id')
+          ->first();
+
+      return $row ? $row[0] : 0;
     }
 }
 Module::register('form', 'FormManager');

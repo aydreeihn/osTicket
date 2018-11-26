@@ -59,8 +59,11 @@ class ListManager extends Module {
               $errors = array();
               foreach ($data as $D) {
                 //create lists
-                if ('self::create' && is_callable('self::create'))
-                    @call_user_func_array('self::create', array($D, &$errors, true));
+                if ('self::__create' && is_callable('self::__create'))
+                        @call_user_func_array('self::__create', array($D, &$errors, true));
+                    // TODO: Add a warning to the success page for errors
+                    //       found here
+                    $errors = array();
               }
                 break;
             case 'export':
@@ -121,9 +124,29 @@ class ListManager extends Module {
 
     static function create($vars=false) {
         $list = new DynamicList($vars);
-        $list->save();
-
         return $list;
+    }
+
+    private function __create($vars, &$error=false, $fetch=false)
+        //see if list exists
+        if ($fetch && ($listId=self::getIdByCombo($vars['name'], $vars['sort_mode'])))
+          return DynamicList::lookup($fieldId);
+        else {
+          $listId = self::create($vars);
+          $listId->save();
+          return $listId->id;
+        }
+    }
+
+    private function getIdByCombo($name, $sort_mode) {
+      $row = DynamicList::objects()
+          ->filter(array(
+            'name'=>$name,
+            'sort_mode'=>$sort_mode))
+          ->values_flat('id')
+          ->first();
+
+      return $row ? $row[0] : 0;
     }
 }
 Module::register('list', 'ListManager');
