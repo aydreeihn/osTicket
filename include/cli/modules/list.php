@@ -127,7 +127,7 @@ class ListManager extends Module {
         return $list;
     }
 
-    private function __create($vars, &$error=false, $fetch=false)
+    private function __create($vars, &$error=false, $fetch=false) {
         //see if list exists
         if ($fetch && ($listId=self::getIdByCombo($vars['name'], $vars['sort_mode'])))
           return DynamicList::lookup($fieldId);
