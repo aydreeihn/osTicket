@@ -76,9 +76,12 @@ class ListItemManager extends Module {
 
                   //format the array nicely
                   foreach ($listItems as $L) {
-                    $clean[] = array(
-                      'list_name' => $L->getList()->getName(), 'status' => $L->get('status'), 'value' => $L->getValue(),
-                      'extra' => $L->get('extra'), 'sort' => $L->getSortOrder(), 'properties' => $L->get('properties'));
+                    if (!$L->getList())
+                        continue;
+                    else
+                        $clean[] = array(
+                          'list_name' => $L->getList()->getName(), 'status' => $L->get('status'), 'value' => $L->getValue(),
+                          'extra' => $L->get('extra'), 'sort' => $L->getSortOrder(), 'properties' => $L->get('properties'));
                   }
 
                   //export yaml file

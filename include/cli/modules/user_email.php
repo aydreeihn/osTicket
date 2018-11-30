@@ -74,7 +74,10 @@ class UserEmailManager extends Module {
 
               //format the array nicely
               foreach ($emails as $E) {
-                $clean[] = array('user_name' => User::getNameById($E->get('user_id')),
+                if (!Validator::is_email($E->get('address')))
+                    continue;
+                else
+                    $clean[] = array('user_name' => User::getNameById($E->get('user_id')),
                                  'flags' => $E->get('flags'), 'address' => $E->get('address'));
               }
 

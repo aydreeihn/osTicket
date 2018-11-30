@@ -71,15 +71,18 @@ class UserManager extends Module {
             $data = YamlDataParser::load($options['file']);
 
             foreach ($data as $D) {
-              $org_id = self::getIdByName($D['org_id']);
+              $org_id = self::getOrgIdByName($D['org_id']);
 
-              $user_import[] = array('ID' => $D['ID'], 'org_id' => $org_id,
-                'name' => $D['name'], 'email' => $D['email'],
-                'created' => $D['created'], 'updated' => $D['updated']
-              );
+              if ($userId = self::getIdByEmail($D['email']))
+                continue;
+              else
+                $user_import[] = array('org_id' => $org_id,
+                  'name' => $D['name'], 'email' => $D['email'],
+                  'created' => $D['created'], 'updated' => $D['updated']
+                );
             }
 
-            //create departments with a unique name as a new record
+            //create users with a unique email as a new record
             $errors = array();
             foreach ($user_import as $o) {
                 if ('User::fromVars' && is_callable('User::fromVars'))
@@ -113,9 +116,12 @@ class UserManager extends Module {
 
               //format the array nicely
               foreach ($users as $U) {
-                $clean[] = array('ID' => $U->id, 'org_id' => $U->getOrganization(),
-                'name' => $U->getName(), 'email' => $U->getDefaultEmail(),
-                'created' => $U->created, 'updated' => $U->updated);
+                  if (!Validator::is_email($U->getDefaultEmail()))
+                      continue;
+                  else
+                    $clean[] = array('org_id' => $U->getOrganization(),
+                    'name' => $U->getName(), 'email' => $U->getDefaultEmail(),
+                    'created' => $U->created, 'updated' => $U->updated);
               }
 
               //export yaml file
@@ -262,13 +268,22 @@ class UserManager extends Module {
         return $users;
     }
 
-    static function getIdByName($name) {
+    static function getOrgIdByName($name) {
         $row = Organization::objects()
             ->filter(array('name'=>$name))
             ->values_flat('id')
             ->first();
 
         return $row ? $row[0] : 0;
+    }
+
+    static function getIdByEmail($email) {
+        $list = UserEmailModel::objects()->filter(array(
+            'address'=>$email,
+        ))->values_flat('user_id')->first();
+
+        if ($list)
+            return $list[0];
     }
 }
 Module::register('user', 'UserManager');

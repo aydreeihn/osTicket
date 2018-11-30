@@ -55,13 +55,13 @@ class CollaboratorManager extends Module {
           //create collaborators
           $errors = array();
           foreach ($data as $D) {
-              $user_id = User::getIdByName($D['user_name']);
+              $user_id = self::getIdByEmail($D['user_email']);
               $ticket_id = Ticket::getIdByNumber($D['ticket_number']);
               $thread_id = self::getThreadIdByCombo($ticket_id, 'T');
 
               $D['user_id'] = $user_id;
               $D['thread_id'] = $thread_id;
-              unset($D['user_name']);
+              unset($D['user_email']);
               unset($D['ticket_number']);
 
               if ('self::__create' && is_callable('self::__create'))
@@ -83,7 +83,7 @@ class CollaboratorManager extends Module {
                 $ticketNumber = self::getNumberById($ticketId);
 
                 $clean[] = array(
-                  'isactive' => $C->get('isactive'), 'ticket_number' => $ticketNumber, 'user_name' => User::getNameById($C->get('user_id')),
+                  'isactive' => $C->get('isactive'), 'ticket_number' => $ticketNumber, 'user_email' => self::getEmailById($C->get('user_id')),
                   'role' => $C->get('role'), 'created' => $C->get('created'), 'updated' => $C->get('updated'));
               }
 
@@ -158,6 +158,23 @@ class CollaboratorManager extends Module {
           ->first();
 
       return $row ? $row[0] : 0;
+    }
+
+    private function getEmailById($userId) {
+      $row = UserEmail::objects()
+          ->filter(array(
+            'user_id'=>$userId))
+          ->values_flat('address')
+          ->first();
+
+      return $row ? $row[0] : 0;
+    }
+
+    static function getIdByEmail($email) {
+        $row = UserEmail::objects()
+            ->filter(array('address' => $email))
+            ->values_flat('user_id')->first();
+        return $row ? $row[0] : 0;
     }
 
     //thread object id

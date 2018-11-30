@@ -72,16 +72,19 @@ class FormFieldManager extends Module {
 
         case 'export':
             if ($options['yaml']) {
-              //get the agents
+              //get the form fields
               $formFields = $this->getQuerySet($options);
 
               //format the array nicely
               foreach ($formFields as $F) {
-                $clean[] = array(
-                  'form_title' => $F->getForm()->getTitle(), 'flags' => $F->get('flags'), 'type' => $F->get('type'),
-                  'label' => $F->get('label'), 'name' => $F->get('name'), 'configuration' => $F->get('configuration'),
-                  'sort' => $F->get('sort'), 'hint' => $F->get('hint'), 'created' => $F->get('created'),
-                  'updated' => $F->get('updated'));
+                if (!$F->getForm())
+                    continue;
+                else
+                    $clean[] = array(
+                      'form_title' => $F->getForm()->getTitle(), 'flags' => $F->get('flags'), 'type' => $F->get('type'),
+                      'label' => $F->get('label'), 'name' => $F->get('name'), 'configuration' => $F->get('configuration'),
+                      'sort' => $F->get('sort'), 'hint' => $F->get('hint'), 'created' => $F->get('created'),
+                      'updated' => $F->get('updated'));
               }
 
               //export yaml file
