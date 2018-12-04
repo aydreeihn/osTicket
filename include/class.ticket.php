@@ -2202,6 +2202,9 @@ implements RestrictedAccess, Threadable, Searchable {
         );
         $tform = TicketForm::getInstance();
         foreach ($tform->getFields() as $F) {
+            // Ignore disabled fields
+            if (!$F->isEnabled())
+                continue;
             $fname = $F->get('name') ?: ('field_'.$F->get('id'));
             if (!$F->hasData() || $F->isPresentationOnly())
                 continue;
