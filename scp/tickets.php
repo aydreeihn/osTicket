@@ -23,11 +23,6 @@ require_once(INCLUDE_DIR.'class.json.php');
 require_once(INCLUDE_DIR.'class.dynamic_forms.php');
 require_once(INCLUDE_DIR.'class.export.php');       // For paper sizes
 
-
-
-// Fetch ticket queues organized by root and sub-queues
-$queues = CustomQueue::getHierarchicalQueues($thisstaff);
-
 $page='';
 $ticket = $user = null; //clean start.
 $redirect = false;
@@ -84,20 +79,16 @@ if (!$ticket) {
     elseif (isset($_GET['a']) && $_GET['a'] === 'search'
         && ($_GET['query'])
     ) {
-        $wc = mb_str_wc($_GET['query']);
-        if ($wc < 4) {
-            $key = substr(md5($_GET['query']), -10);
-            if ($_GET['search-type'] == 'typeahead') {
-                // Use a faster index
-                $criteria = ['user__emails__address', 'equal', $_GET['query']];
-            } else {
-                $criteria = [':keywords', null, $_GET['query']];
-            }
-            $_SESSION['advsearch'][$key] = [$criteria];
-            $queue_id = "adhoc,{$key}";
-        } else {
-            $errors['err'] = __('Search term cannot have more than 3 keywords');
+        $key = substr(md5($_GET['query']), -10);
+        if ($_GET['search-type'] == 'typeahead') {
+            // Use a faster index
+            $criteria = ['user__emails__address', 'equal', $_GET['query']];
         }
+        else {
+            $criteria = [':keywords', null, $_GET['query']];
+        }
+        $_SESSION['advsearch'][$key] = [$criteria];
+        $queue_id = "adhoc,{$key}";
     }
 
     $queue_key = sprintf('::Q:%s', ObjectModel::OBJECT_TYPE_TICKET);
@@ -118,21 +109,18 @@ if (!$ticket) {
         $queue = AdhocSearch::load($key);
     }
 
-    if ((int) $queue_id && !$queue)
+    // Make the current queue sticky
+    $_SESSION[$queue_key] = $queue_id;
+
+    if ((int) $queue_id && !$queue) {
         $queue = SavedQueue::lookup($queue_id);
-
-    if (!$queue && ($qid=$cfg->getDefaultTicketQueueId()))
-        $queue = SavedQueue::lookup($qid);
-
-    if (!$queue && $queues)
-        list($queue,) = $queues[0];
-
-    if ($queue) {
-        // Set the queue_id for navigation to turn a top-level item bold
-        $_REQUEST['queue'] = $queue->getId();
-        // Make the current queue sticky
-         $_SESSION[$queue_key] = $queue->getId();
     }
+    if (!$queue) {
+        $queue = SavedQueue::lookup($cfg->getDefaultTicketQueueId());
+    }
+
+    // Set the queue_id for navigation to turn a top-level item bold
+    $_REQUEST['queue'] = $queue->getId();
 }
 
 // Configure form for file uploads
@@ -155,8 +143,6 @@ if($_POST && !$errors):
         $errors=array();
         $lock = $ticket->getLock(); //Ticket lock if any
         $role = $ticket->getRole($thisstaff);
-        $dept = $ticket->getDept();
-        $isManager = $dept->isManager($thisstaff); //Check if Agent is Manager
         switch(strtolower($_POST['a'])):
         case 'reply':
             if (!$role || !$role->hasPerm(Ticket::PERM_REPLY)) {
@@ -312,13 +298,36 @@ if($_POST && !$errors):
                     }
                     break;
                 case 'overdue':
-                    if(!$dept || !$isManager) {
+                    $dept = $ticket->getDept();
+                    if(!$dept || !$dept->isManager($thisstaff)) {
                         $errors['err']=__('Permission Denied. You are not allowed to flag tickets overdue');
                     } elseif($ticket->markOverdue()) {
                         $msg=sprintf(__('Ticket flagged as overdue by %s'),$thisstaff->getName());
                         $ticket->logActivity(__('Ticket Marked Overdue'),$msg);
                     } else {
                         $errors['err']=sprintf('%s %s', __('Problems marking the the ticket overdue.'), __('Please try again!'));
+                    }
+                    break;
+                case 'answered':
+                    $dept = $ticket->getDept();
+                    if(!$dept || !$dept->isManager($thisstaff)) {
+                        $errors['err']=__('Permission Denied. You are not allowed to flag tickets');
+                    } elseif($ticket->markAnswered()) {
+                        $msg=sprintf(__('Ticket flagged as answered by %s'),$thisstaff->getName());
+                        $ticket->logActivity(__('Ticket Marked Answered'),$msg);
+                    } else {
+                        $errors['err']=sprintf('%s %s', __('Problems marking the ticket answered.'), __('Please try again!'));
+                    }
+                    break;
+                case 'unanswered':
+                    $dept = $ticket->getDept();
+                    if(!$dept || !$dept->isManager($thisstaff)) {
+                        $errors['err']=__('Permission Denied. You are not allowed to flag tickets');
+                    } elseif($ticket->markUnAnswered()) {
+                        $msg=sprintf(__('Ticket flagged as unanswered by %s'),$thisstaff->getName());
+                        $ticket->logActivity(__('Ticket Marked Unanswered'),$msg);
+                    } else {
+                        $errors['err']=sprintf('%s %s', __('Problems marking the ticket unanswered.'), __('Please try again!'));
                     }
                     break;
                 case 'banemail':
@@ -437,6 +446,9 @@ if (isset($_GET['clear_filter']))
 $nav->setTabActive('tickets');
 $nav->addSubNavInfo('jb-overflowmenu', 'customQ_nav');
 
+// Fetch ticket queues organized by root and sub-queues
+$queues = CustomQueue::getHierarchicalQueues($thisstaff);
+
 // Start with all the top-level (container) queues
 foreach ($queues as $_) {
     list($q, $children) = $_;
@@ -450,7 +462,7 @@ foreach ($queues as $_) {
                 || false !== strpos($queue->getPath(), "/{$q->getId()}/"));
         include STAFFINC_DIR . 'templates/queue-navigation.tmpl.php';
 
-        return $child_selected;
+        return ($child_selected || $selected);
     });
 }
 
@@ -461,7 +473,10 @@ $nav->addSubMenu(function() use ($queue) {
     // A queue is selected if it is the one being displayed. It is
     // "child" selected if its ID is in the path of the one selected
     $child_selected = $queue instanceof SavedSearch;
+    $searches = SavedSearch::forStaff($thisstaff)->getIterator();
+
     include STAFFINC_DIR . 'templates/queue-savedsearches-nav.tmpl.php';
+
     return ($child_selected || $selected);
 });
 
