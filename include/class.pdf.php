@@ -108,7 +108,11 @@ class Task2PDF extends mPDFWithLocalImages {
         $this->task = $task;
         $this->options = $options;
 
+<<<<<<< HEAD
         parent::__construct(['format' => $this->options['psize']]);
+=======
+        parent::__construct(['mode' => 'utf-8', 'format' => $psize, 'tempDir'=>sys_get_temp_dir()]);
+>>>>>>> c38f0456ad558c494710e7a94bc756b4cec3be05
         $this->_print();
     }
 
