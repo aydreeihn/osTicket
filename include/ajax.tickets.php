@@ -73,15 +73,16 @@ class TicketsAjaxAPI extends AjaxController {
             $email = $T['user__default_email__address'];
             $count = $T['tickets'];
             if ($T['number']) {
-                $tickets[] = array('id'=>$T['number'], 'value'=>$T['number'],
+                $tickets[$T['number']] = array('id'=>$T['number'], 'value'=>$T['number'],
                     'info'=>"{$T['number']} — {$email}",
                     'matches'=>$_REQUEST['q']);
             }
             else {
-                $tickets[] = array('email'=>$email, 'value'=>$email,
+                $tickets[$email] = array('email'=>$email, 'value'=>$email,
                     'info'=>"$email ($count)", 'matches'=>$_REQUEST['q']);
             }
         }
+        $tickets = array_values($tickets);
 
         return $this->json_encode($tickets);
     }
@@ -868,7 +869,15 @@ function refer($tid, $target=null) {
                                 );
 
                     if ($depts) {
-                        $members->filter(Q::any( array(
+                        $all_agent_depts = Dept::objects()->filter(
+                            Q::all( array('id__in' => $depts,
+                            Q::not(array('flags__hasbit'
+                                => Dept::FLAG_ASSIGN_MEMBERS_ONLY)),
+                            Q::not(array('flags__hasbit'
+                                => Dept::FLAG_ASSIGN_PRIMARY_ONLY))
+                            )))->values_flat('id');
+                        if (!count($all_agent_depts)) {
+                            $members->filter(Q::any( array(
                                         'dept_id__in' => $depts,
                                         Q::all(array(
                                             'dept_access__dept__id__in' => $depts,
@@ -878,6 +887,7 @@ function refer($tid, $target=null) {
                                                     => Dept::FLAG_ASSIGN_PRIMARY_ONLY))
                                             ))
                                         )));
+                        }
                     }
 
                     switch ($cfg->getAgentNameFormat()) {
@@ -1164,26 +1174,50 @@ function refer($tid, $target=null) {
         $state = strtolower($status->getState());
 
         if (!$errors && $ticket->setStatus($status, $_REQUEST['comments'], $errors)) {
+            $failures = array();
 
-            if ($state == 'deleted') {
-                $msg = sprintf('%s %s',
-                        sprintf(__('Ticket #%s'), $ticket->getNumber()),
-                        __('deleted sucessfully')
-                        );
-            } elseif ($state != 'open') {
-                 $msg = sprintf(__('%s status changed to %s'),
-                         sprintf(__('Ticket #%s'), $ticket->getNumber()),
-                         $status->getName());
-            } else {
-                $msg = sprintf(
-                        __('%s status changed to %s'),
-                        __('Ticket'),
-                        $status->getName());
+            // Set children statuses (if applicable)
+            if ($_REQUEST['children']) {
+                $children = $ticket->getChildTickets($ticket->getId());
+
+                foreach ($children as $cid) {
+                    $child = Ticket::lookup($cid[0]);
+                    if (!$child->setStatus($status, '', $errors))
+                        $failures[$cid[0]] = $child->getNumber();
+                }
             }
 
-            $_SESSION['::sysmsgs']['msg'] = $msg;
+            if (!$failures) {
+                if ($state == 'deleted') {
+                    $msg = sprintf('%s %s',
+                            sprintf(__('Ticket #%s'), $ticket->getNumber()),
+                            __('deleted sucessfully')
+                            );
+                } elseif ($state != 'open') {
+                    $msg = sprintf(__('%s status changed to %s'),
+                            sprintf(__('Ticket #%s'), $ticket->getNumber()),
+                            $status->getName());
+                } else {
+                    $msg = sprintf(
+                           __('%s status changed to %s'),
+                           __('Ticket'),
+                           $status->getName());
+                }
 
-            Http::response(201, 'Successfully processed');
+                $_SESSION['::sysmsgs']['msg'] = $msg;
+
+                Http::response(201, 'Successfully processed');
+            } else {
+                $tickets = array();
+                foreach ($failures as $id=>$num) {
+                    $tickets[] = sprintf('<a href="tickets.php?id=%d"><b>#%s</b></a>',
+                                    $id,
+                                    $num);
+                }
+                $info['warn'] = sprintf(__('Error updating ticket status for %s'),
+                                 ($tickets) ? implode(', ', $tickets) : __('child tickets')
+                                 );
+            }
         } elseif (!$errors['err']) {
             $errors['err'] =  __('Error updating ticket status');
         }
@@ -1479,6 +1513,9 @@ function refer($tid, $target=null) {
         $info['status_id'] = $info['status_id'] ?: $ticket->getStatusId();
         $info['comments'] = Format::htmlchars($_REQUEST['comments']);
 
+        // Has Children?
+        $info['children'] = ($ticket->getChildTickets($ticket->getId())->count());
+
         return self::_changeStatus($state, $info, $errors);
     }
 
@@ -1576,8 +1613,11 @@ function refer($tid, $target=null) {
 
                     $note = array(
                             'title' => __('Task Created From Thread Entry'),
-                            'body' => __('Task ' . $taskLink .
-                            '<br /> Thread Entry: ' . $entryLink)
+                            'body' => sprintf(__(
+                                // %1$s is the task ID number and %2$s is the thread
+                                // entry date
+                                'Task %1$s<br/> Thread Entry: %2$s'),
+                                $taskLink, $entryLink)
                             );
 
                   $ticket->logNote($note['title'], $note['body'], $thisstaff);
@@ -1589,7 +1629,8 @@ function refer($tid, $target=null) {
 
                     $note = array(
                             'title' => __('Task Created From Thread Entry'),
-                            'note' => __('This Task was created from Ticket ' . $ticketLink));
+                            'note' => sprintf(__('This Task was created from Ticket %1$s'), $ticketLink),
+                    );
 
                     $task->postNote($note, $errors, $thisstaff);
                   }

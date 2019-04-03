@@ -31,13 +31,13 @@ class Test {
     function teardown() {
     }
 
-    function ignore3rdparty() {
+    static function ignore3rdparty() {
         return true;
     }
 
-    function getAllScripts($pattern='*.php', $root=false, $excludes=true) {
+    static function getAllScripts($pattern='*.php', $root=false, $excludes=true) {
         $root = $root ?: get_osticket_root_path();
-        $excludes = $excludes ?: $this->ignore3rdparty();
+        $excludes = $excludes ?: static::ignore3rdparty();
         $scripts = array();
         foreach (glob_recursive("$root/$pattern") as $s) {
             $found = false;
@@ -69,11 +69,11 @@ class Test {
         fputs(STDOUT, 'w');
     }
 
-    function assert($expr, $message) {
+    function assert($expr, $message=false) {
         if ($expr)
             $this->pass();
         else
-            $this->fail('', '', $message);
+            $this->fail('', '', $message ?: 'Test case failed');
     }
 
     function assertEqual($a, $b, $message=false) {

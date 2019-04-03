@@ -7,6 +7,11 @@ class FilterAction extends VerySimpleModel {
         'table' => FILTER_ACTION_TABLE,
         'pk' => array('id'),
         'ordering' => array('sort'),
+        'joins' => array(
+            'filter' => array(
+                'constraint' => array('filter_id' => 'Filter.id'),
+            ),
+        ),
     );
 
     static $registry = array();
@@ -82,10 +87,10 @@ class FilterAction extends VerySimpleModel {
     function setFilterFlag($actions, $flag, $bool) {
         foreach ($actions as $action) {
           $filter = Filter::lookup($action->filter_id);
-          if ($filter) {
-            if ($flag == 'dept') $filter->setFlag(Filter::FLAG_INACTIVE_DEPT, $bool);
-            if ($flag == 'topic') $filter->setFlag(Filter::FLAG_INACTIVE_HT, $bool);
-          }
+          if ($filter && ($flag == 'dept') && ($filter->hasFlag(Filter::FLAG_INACTIVE_DEPT) != $bool))
+            $filter->setFlag(Filter::FLAG_INACTIVE_DEPT, $bool);
+          if ($filter && ($flag == 'topic') && ($filter->hasFlag(Filter::FLAG_INACTIVE_HT) != $bool))
+            $filter->setFlag(Filter::FLAG_INACTIVE_HT, $bool);
         }
     }
 

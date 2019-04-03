@@ -10,6 +10,7 @@ $cmp = function ($a, $b) use ($sort) {
 };
 
 $events = $events->order_by($sort);
+$eventCount = count($events);
 $events = new IteratorIterator($events->getIterator());
 $events->rewind();
 $event = $events->current();
@@ -24,9 +25,11 @@ foreach (Attachment::objects()->filter(array(
 
 // get child thread entries
 $tid = $this->getObJectId();
-$ticket = Ticket::lookup($tid);
+if ($this->getObjectType() == 'T')
+    $ticket = Ticket::lookup($tid);
+var_dump('type', $ticket->getMergeType());
 //get entries for children tickets
-if ($ticket->getMergeType() == 'visual') {
+if ($ticket && $ticket->getMergeType() == 'visual') {
     $tickets = Ticket::getChildTickets($tid);
     foreach ($tickets as $key => $ticket_id) {
         if (!$cTicket = Ticket::lookup($ticket_id[0]))
@@ -39,8 +42,10 @@ if ($ticket->getMergeType() == 'visual') {
             $thread_attachments[$att->object_id][] = $att;
         }
 
-        $childEntries = $cTicket->getThread()->getEntries();
-        $entries = $entries->union($childEntries, false);
+        if ($ticket->hasFlag(Ticket::FLAG_SHOW_CHILDREN)) {
+            $childEntries = $cTicket->getThread()->getEntries() ;
+            $entries = $entries->union($childEntries, false);
+        }
     }
 }
 
@@ -51,30 +56,59 @@ if ($ticket->getMergeType() == 'visual') {
     if ($entries->exists(true)) {
         // Go through all the entries and bucket them by time frame
         $buckets = array();
-        $rel = 0;
+        $childEntries = array();
+        // $rel = 0;
         foreach ($entries as $i=>$E) {
             // First item _always_ shows up
-            if ($i != 0)
-                // Set relative time resolution to 12 hours
-                $rel = Format::relativeTime(Misc::db2gmtime($E->created, false, 43200));
-            $buckets[$rel][] = $E;
+            // if ($i != 0)
+            //     // Set relative time resolution to 12 hours
+            //     $rel = Format::relativeTime(Misc::db2gmtime($E->created, false, 43200));
+            if ($ticket) {
+                $extra = json_decode($E->extra, true);
+                //separated entries
+                if ($ticket->getMergeType() == 'separate') {
+                    if ($extra['thread'])
+                        $childEntries[$E->getId()] = $E;
+                    else
+                        $buckets[$E->getId()] = $E;
+                }
+                else
+                    $buckets[$E->getId()] = $E;
+            }
         }
 
-        // Go back through the entries and render them on the page
-        foreach ($buckets as $rel=>$entries) {
-            // TODO: Consider adding a date boundary to indicate significant
-            //       changes in dates between thread items.
-            foreach ($entries as $entry) {
-                // Emit all events prior to this entry
-                while ($event && $cmp($event->timestamp, $entry->created)) {
-                    $event->render(ThreadEvent::MODE_STAFF);
-                    $events->next();
-                    $event = $events->current();
+        if ($ticket->getMergeType() == 'separate')
+            $buckets = $buckets + $childEntries;
+
+        // TODO: Consider adding a date boundary to indicate significant
+        //       changes in dates between thread items.
+
+        foreach ($buckets as $entry) { //I want this to work for both
+            if ($entry->hasFlag(ThreadEntry::FLAG_CHILD) && $entry->extra) {
+                $extra = json_decode($entry->extra, true);
+                $indent = true;
+                if ($extra['number'])
+                    $number = $extra['number'];
+                else {
+                    if (!$thread = Thread::lookup($extra['thread']))
+                        continue;
+                    $threadExtra = json_decode($thread->extra, true);
+                    $number = $threadExtra['number'];
                 }
-                ?><div id="thread-entry-<?php echo $entry->getId(); ?>"><?php
-                include STAFFINC_DIR . 'templates/thread-entry.tmpl.php';
-                ?></div><?php
+
             }
+            else
+                $number = null;
+
+            // Emit all events prior to this entry
+            while ($event && $cmp($event->timestamp, $entry->created)) {
+                $event->render(ThreadEvent::MODE_STAFF);
+                $events->next();
+                $event = $events->current();
+            }
+            ?><div id="thread-entry-<?php echo $entry->getId(); ?>"><?php
+            include STAFFINC_DIR . 'templates/thread-entry.tmpl.php';
+            ?></div><?php
         }
     }
 
@@ -85,7 +119,7 @@ if ($ticket->getMergeType() == 'visual') {
         $event = $events->current();
     }
     // This should never happen
-    if (count($entries) + count($events) == 0) {
+    if (count($entries) + $eventCount == 0) {
         echo '<p><em>'.__('No entries have been posted to this thread.').'</em></p>';
     }
     ?>

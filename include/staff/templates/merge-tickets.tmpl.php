@@ -40,6 +40,11 @@ foreach ($tickets as $t) { ?>
 </div>
 <?php } ?>
 </div>
+<br/>
+<label class="inline checkbox">
+    <?php echo __('Show Children Threads') ?>
+    <input type="checkbox" name="show_children" value="1" <?php echo $ticket->hasFlag(Ticket::FLAG_SHOW_CHILDREN)?'checked="checked"':''; ?> >
+</label>
 <hr/>
 <div>
 <i class="icon-plus"></i>&nbsp;
@@ -77,13 +82,13 @@ foreach ($tickets as $t) { ?>
 <?php echo __('Add a Ticket'); ?></button>
 </div>
 
-<!-- <div>
+<div>
     <hr>
     <?php echo __('Merge Type: '); ?><i class="help-tip icon-question-sign" href="#merge_types"></i>
-    <!-- <input type="radio" name="combine" value="1" <?php //echo $ticket->getMergeType() == 'combine'?'checked="checked"':''; ?>><?php echo __('Combine Threads');?>
-    <input type="radio" name="combine" value="0" <?php //echo $ticket->getMergeType() == 'separate'?'checked="checked"':''; ?>><?php echo __('Separate Threads');?>
-    <input type="radio" name="combine" value="2" <?php //echo $ticket->getMergeType() == 'visual'?'checked="checked"':''; ?>><?php echo __('Visual Merge');?>
-</div> -->
+    <input type="radio" name="combine" value="1" <?php echo $ticket->getMergeType() == 'combine'?'checked="checked"':''; ?>><?php echo __('Combine Threads');?>
+    <input type="radio" name="combine" value="0" <?php echo $ticket->getMergeType() == 'separate'?'checked="checked"':''; ?>><?php echo __('Separate Threads');?>
+    <input type="radio" name="combine" value="2" <?php echo $ticket->getMergeType() == 'visual'?'checked="checked"':''; ?>><?php echo __('Visual Merge');?>
+</div>
 
 <div id="delete-warning" style="display:none">
 <hr>

@@ -161,10 +161,19 @@ implements Searchable {
         return $collaborators;
     }
 
+    function isCollaborator($user) {
+        return $this->collaborators->findFirst(array(
+                    'user_id'     => $user->getId(),
+                    'thread_id'   => $this->getId()));
+    }
+
     function addCollaborator($user, $vars, &$errors, $event=true) {
 
         if (!$user)
             return null;
+
+        if ($this->isCollaborator($user))
+            return false;
 
         $vars = array_merge(array(
                 'threadId' => $this->getId(),
@@ -246,6 +255,13 @@ implements Searchable {
         return true;
     }
 
+    function getIdByExtra($extra) { //adriane
+        return Thread::objects()
+            ->filter(array('extra'=>$extra))
+            ->values_flat('id')
+            ->first();
+    }
+
 
     //UserList of participants (collaborators)
     function getParticipants() {
@@ -261,6 +277,17 @@ implements Searchable {
         }
 
         return $this->_participants;
+    }
+
+    // MailingList of recipients (collaborators)
+    function getRecipients() {
+        $list = new MailingList();
+        if ($collabs = $this->getActiveCollaborators()) {
+            foreach ($collabs as $c)
+                $list->addCc($c);
+        }
+
+        return $list;
     }
 
     function getReferral($id, $type) {
@@ -547,8 +574,13 @@ implements Searchable {
         switch ($vars['thread-type']) {
         case 'M':
             $vars['message'] = $body;
-            if ($object instanceof Threadable)
-                return $object->postThreadEntry('M', $vars);
+            if ($object instanceof Threadable) {
+                $entry = $object->postThreadEntry('M', $vars);
+                if ($this->getObjectType() == 'C') {                    
+                    ThreadEntry::setExtra(array($entry), array('thread' => $this->getId()), $object->getThread()->getId());
+                }
+                return $entry;
+            }
             elseif ($this instanceof ObjectThread)
                 return $this->addMessage($vars, $errors);
             break;
@@ -584,6 +616,25 @@ implements Searchable {
         return Collaborator::objects()
             ->filter(array('thread_id'=>$this->getId()))
             ->delete();
+    }
+
+    // function setExtra($mergedEntry, $info) { //adriane thread
+    //     //set the child thread object_id
+    //     $this->object_type = 'H';
+    //     $this->object_id = $mergedEntryId;
+    //     // $this->extra = json_encode($info);
+    //     ThreadEntry::setExtra($this->getEntries(), array('thread' => $this->getId()), $mergedEntry->getThreadId());
+    //     $this->save();
+    // }
+
+    function setExtra($mergedThread, $info='') { //adriane thread
+        // var_dump('hit');
+        //set the child thread object_id
+        $this->object_type = 'C';
+        $this->object_id = $mergedThread->getObjectId();
+        // $this->extra = json_encode($info);
+        ThreadEntry::setExtra($this->getEntries(), array('thread' => $this->getId()), $mergedThread->getId());
+        $this->save();
     }
 
     /**
@@ -1478,8 +1529,21 @@ implements TemplateVariable {
         return $entry;
     }
 
+    function setExtra($entries, $info=NULL, $thread_id=NULL) {
+        // var_dump('hit other set extra', print $entries);
+        foreach ($entries as $entry) {
+            // var_dump('hit other set extra', $entry);
+            if (!$entry->extra) {
+                $entry->thread_id = $thread_id ?: $thread_id;
+                $entry->extra = !is_null($info) ? json_encode($info) : NULL;
+                $entry->setFlag(ThreadEntry::FLAG_CHILD, true);
+                $entry->save();
+            }
+        }
+    }
+
     //new entry ... we're trusting the caller to check validity of the data.
-    static function create($vars=false) {
+    static function create($vars=false) { //adriane try hasflag
         global $cfg;
 
         assert(is_array($vars));

@@ -26,8 +26,8 @@ class Export {
 
     static function dumpQuery($sql, $headers, $how='csv', $options=array()) {
         $exporters = array(
-            'csv' => CsvResultsExporter,
-            'json' => JsonResultsExporter
+            'csv' => 'CsvResultsExporter',
+            'json' => 'JsonResultsExporter'
         );
         $exp = new $exporters[$how]($sql, $headers, $options);
         return $exp->dump();
@@ -65,7 +65,6 @@ class Export {
         $tickets = $sql->models()
             ->select_related('user', 'user__default_email', 'dept', 'staff',
                 'team', 'staff', 'cdata', 'topic', 'status', 'cdata__:priority')
-            ->options(QuerySet::OPT_NOCACHE)
             ->annotate(array(
                 'collab_count' => TicketThread::objects()
                     ->filter(array('ticket__ticket_id' => new SqlField('ticket_id', 1)))

@@ -91,6 +91,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
                         'datetime_format'   => '',
                         'thread_view_order' => '',
                         'default_ticket_queue_id' => 0,
+                        'reply_redirect' => 'Ticket',
                         ));
             $this->_config = $_config->getInfo();
         }
@@ -347,6 +348,10 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         return $this->default_paper_size;
     }
 
+    function getReplyRedirect() {
+        return $this->reply_redirect;
+    }
+
     function forcePasswdChange() {
         return $this->change_passwd;
     }
@@ -593,7 +598,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         $visibility = Q::any(new Q(array('status__state'=>'open', $assigned)));
 
         // -- Routed to a department of mine
-        if (!$this->showAssignedOnly() && ($depts=$this->getDepts())) {
+        if (($depts=$this->getDepts()) && count($depts)) {
             $visibility->add(array('dept_id__in' => $depts));
             $visibility->add(array('thread__referrals__dept__id__in' => $depts));
         }
@@ -744,6 +749,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
                     'default_from_name' => $vars['default_from_name'],
                     'thread_view_order' => $vars['thread_view_order'],
                     'default_ticket_queue_id' => $vars['default_ticket_queue_id'],
+                    'reply_redirect' => ($vars['reply_redirect'] == 'Queue') ? 'Queue' : 'Ticket',
                     )
                 );
         $this->_config = $_config->getInfo();
@@ -1389,7 +1395,7 @@ extends AbstractForm {
         );
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         // Index permissions as ['ticket.edit' => 1]
         $clean['perms'] = array_keys($clean['perms']);
@@ -1441,7 +1447,7 @@ extends AbstractForm {
         return __('Change the primary department and primary role of the selected agents');
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         $clean['eavesdrop'] = $clean['eavesdrop'] ? 1 : 0;
         return $clean;
@@ -1536,7 +1542,7 @@ extends AbstractForm {
         );
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         list($clean['username'],) = preg_split('/[^\w.-]/u', $clean['email'], 2);
         if (mb_strlen($clean['username']) < 3 || Staff::lookup($clean['username']))

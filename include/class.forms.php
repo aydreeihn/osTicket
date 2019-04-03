@@ -187,14 +187,14 @@ class Form {
         $this->validators[] = $function;
     }
 
-    function render($staff=true, $title=false, $options=array()) {
-        if ($title)
-            $this->title = $title;
+    function render($options=array()) {
+        if (isset($options['title']))
+            $this->title = $options['title'];
         if (isset($options['instructions']))
             $this->instructions = $options['instructions'];
         $form = $this;
         $template = $options['template'] ?: 'dynamic-form.tmpl.php';
-        if ($staff)
+        if (isset($options['staff']) && $options['staff'])
             include(STAFFINC_DIR . 'templates/' . $template);
         else
             include(CLIENTINC_DIR . 'templates/' . $template);
@@ -1478,6 +1478,10 @@ class TextboxField extends FormField {
     function parse($value) {
         return Format::striptags($value);
     }
+
+    function display($value) {
+        return ($value === '0') ? '&#48;' : Format::htmlchars($this->toString($value ?: $this->value));
+    }
 }
 
 class PasswordField extends TextboxField {
@@ -2039,11 +2043,11 @@ class DatetimeField extends FormField {
                 'yd' => __('Yesterday'),
                 'tw' => __('This Week'),
                 'tm' => __('This Month'),
-                'tq' => __('This Quater'),
+                'tq' => __('This Quarter'),
                 'ty' => __('This Year'),
                 'lw' => __('Last Week'),
                 'lm' => __('Last Month'),
-                'lq' => __('Last Quater'),
+                'lq' => __('Last Quarter'),
                 'ly' => __('Last Year'),
         );
         return $period ? $periods[$period] : $periods;
@@ -2155,6 +2159,8 @@ class DatetimeField extends FormField {
     }
 
     function toString($value) {
+        if (is_array($value))
+            return '';
 
         $timestamp = is_int($value) ? $value : (int) strtotime($value);
         if ($timestamp <= 0)
@@ -4495,7 +4501,7 @@ class FileUploadWidget extends Widget {
         ),
     );
 
-    function render($options) {
+    function render($options=array()) {
         $config = $this->field->getConfiguration();
         $name = $this->field->getFormName();
         $id = substr(md5(spl_object_hash($this)), 10);
@@ -4982,7 +4988,7 @@ class AssignmentForm extends Form {
         return !$this->errors();
     }
 
-    function render($options) {
+    function render($options=array()) {
 
         switch(strtolower($options['template'])) {
         case 'simple':
@@ -5269,7 +5275,7 @@ class ReferralForm extends Form {
         return !$this->errors();
     }
 
-    function render($options) {
+    function render($options=array()) {
 
         switch(strtolower($options['template'])) {
         case 'simple':
@@ -5377,7 +5383,7 @@ class TransferForm extends Form {
         return !$this->errors();
     }
 
-    function render($options) {
+    function render($options=array()) {
 
         switch(strtolower($options['template'])) {
         case 'simple':

@@ -15,16 +15,17 @@
 // TODO:  Make ObjectModel models base class and extend VerySimpleModel
 class ObjectModel {
 
-    const OBJECT_TYPE_TICKET = 'T';
-    const OBJECT_TYPE_THREAD = 'H';
-    const OBJECT_TYPE_USER   = 'U';
-    const OBJECT_TYPE_ORG    = 'O';
-    const OBJECT_TYPE_FAQ    = 'K';
-    const OBJECT_TYPE_FILE   = 'F';
-    const OBJECT_TYPE_TASK   = 'A';
-    const OBJECT_TYPE_TEAM   = 'E';
-    const OBJECT_TYPE_DEPT   = 'D';
-    const OBJECT_TYPE_STAFF  = 'S';
+    const OBJECT_TYPE_TICKET       = 'T';
+    const OBJECT_TYPE_THREAD       = 'H';
+    const OBJECT_TYPE_USER         = 'U';
+    const OBJECT_TYPE_ORG          = 'O';
+    const OBJECT_TYPE_FAQ          = 'K';
+    const OBJECT_TYPE_FILE         = 'F';
+    const OBJECT_TYPE_TASK         = 'A';
+    const OBJECT_TYPE_TEAM         = 'E';
+    const OBJECT_TYPE_DEPT         = 'D';
+    const OBJECT_TYPE_STAFF        = 'S';
+    const OBJECT_TYPE_CHILD_TICKET = 'C';
 
     private function objects() {
         static $objects = false;
@@ -40,6 +41,7 @@ class ObjectModel {
                     self::OBJECT_TYPE_TEAM    => 'Team',
                     self::OBJECT_TYPE_DEPT    => 'Dept',
                     self::OBJECT_TYPE_STAFF   => 'Staff',
+                    self::OBJECT_TYPE_CHILD_TICKET  => 'Ticket',
                     );
         }
 

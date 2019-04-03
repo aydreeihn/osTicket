@@ -149,7 +149,7 @@ class CustomQueue extends VerySimpleModel {
         $all = $this->getSupportedMatches($this->getRoot());
         $items = array();
         $criteria = $criteria ?: $this->getCriteria(true);
-        foreach ($criteria as $C) {
+        foreach ($criteria ?: array() as $C) {
             list($path, $method, $value) = $C;
             if ($path === ':keywords') {
                 $items[] = Format::htmlchars("\"{$value}\"");
@@ -574,6 +574,9 @@ class CustomQueue extends VerySimpleModel {
                 continue;
             // Ignore non-data fields
             elseif (!$f->hasData() || $f->isPresentationOnly())
+                continue;
+            // Ignore disabled fields
+            elseif (!$f->hasFlag(DynamicFormField::FLAG_ENABLED))
                 continue;
 
             $name = $f->get('name') ?: 'field_'.$f->get('id');
@@ -1142,9 +1145,6 @@ class CustomQueue extends VerySimpleModel {
             return false;
 
         $order = array_keys($fields);
-        // Filter exportable fields
-        if (!($fields = array_intersect_key($this->getExportableFields(), $fields)))
-            return false;
 
         $new = $fields;
         foreach ($this->exports as $f) {
@@ -1251,7 +1251,7 @@ class CustomQueue extends VerySimpleModel {
                 && !$this->hasFlag(self::FLAG_INHERIT_COLUMNS)) {
 
 
-            if ($this->columns->update($vars['columns'], $errors, array(
+            if ($this->columns->updateColumns($vars['columns'], $errors, array(
                                 'queue_id' => $this->getId(),
                                 'staff_id' => $this->staff_id)))
                 $this->columns->reset();
@@ -2575,7 +2575,7 @@ extends VerySimpleModel {
                 );
 
         if (!$setting['inherit-columns'] && $vars['columns']) {
-            if (!$this->columns->update($vars['columns'], $errors, array(
+            if (!$this->columns->updateColumns($vars['columns'], $errors, array(
                                 'queue_id' => $this->queue_id,
                                 'staff_id' => $this->staff_id)))
                 $setting['inherit-columns'] = true;
@@ -2686,9 +2686,7 @@ extends InstrumentedList {
         return $anno;
     }
 
-    function update($columns, &$errors, $options=array()) {
-
-
+    function updateColumns($columns, &$errors, $options=array()) {
         $new = $columns;
         $order = array_keys($new);
         foreach ($this as $col) {

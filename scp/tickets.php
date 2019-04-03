@@ -214,7 +214,7 @@ if($_POST && !$errors):
                     $ticket = null;
 
                 $redirect = 'tickets.php';
-                if ($ticket)
+                if ($ticket && $thisstaff->getReplyRedirect() == 'Ticket')
                     $redirect = 'tickets.php?id='.$ticket->getId();
 
             } elseif (!$errors['err']) {
@@ -445,12 +445,13 @@ foreach ($queues as $_) {
     $nav->addSubMenu(function() use ($q, $queue, $children) {
         // A queue is selected if it is the one being displayed. It is
         // "child" selected if its ID is in the path of the one selected
+        $_selected = ($queue && $queue->getId() == $q->getId());
         $child_selected = $queue
             && ($queue->parent_id == $q->getId()
                 || false !== strpos($queue->getPath(), "/{$q->getId()}/"));
         include STAFFINC_DIR . 'templates/queue-navigation.tmpl.php';
 
-        return $child_selected;
+        return ($child_selected || $_selected);
     });
 }
 
