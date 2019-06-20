@@ -69,14 +69,17 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
 
     function get($field, $default=false) {
 
+       // Check primary fields
+        try {
+            return parent::get($field, $default);
+        } catch (Exception $e) {}
+
         // Autoload config if not loaded already
         if (!isset($this->_config))
             $this->getConfig();
 
         if (isset($this->_config[$field]))
             return $this->_config[$field];
-
-        return parent::get($field, $default);
     }
 
     function getConfig() {
@@ -89,6 +92,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
                         'datetime_format'   => '',
                         'thread_view_order' => '',
                         'default_ticket_queue_id' => 0,
+                        'reply_redirect' => 'Ticket',
                         ));
             $this->_config = $_config->getInfo();
         }
@@ -230,6 +234,8 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
     }
 
     function setPassword($new, $current=false) {
+        global $thisstaff;
+
         // Allow the backend to update the password. This is the preferred
         // method as it allows for integration with password policies and
         // also allows for remotely updating the password where possible and
@@ -253,6 +259,9 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         $this->change_passwd = 0;
         $this->cancelResetTokens();
         $this->passwdreset = SqlFunction::NOW();
+
+        // Clean sessions
+        Signal::send('auth.clean', $this, $thisstaff);
 
         return $rv;
     }
@@ -338,6 +347,10 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
 
     function getDefaultPaperSize() {
         return $this->default_paper_size;
+    }
+
+    function getReplyRedirect() {
+        return $this->reply_redirect;
     }
 
     function forcePasswdChange() {
@@ -464,10 +477,13 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         if (is_null($dept))
             return $this->role;
 
-        if ((!$dept instanceof Dept) && !($dept=Dept::lookup($dept)))
-            return null;
+       if (is_numeric($dept))
+          $deptId = $dept;
+       elseif($dept instanceof Dept)
+          $deptId = $dept->getId();
+       else
+          return null;
 
-        $deptId = $dept->getId();
         $roles = $this->getRoles();
         if (isset($roles[$deptId]))
             return $roles[$deptId];
@@ -476,8 +492,10 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         if ($assigned && $this->usePrimaryRoleOnAssignment())
             return $this->role;
 
-        // View only access
-        return new Role(array());
+        // Ticket Create & View only access
+        $perms = JSONDataEncoder::encode(array(
+                    Ticket::PERM_CREATE => 1));
+        return new Role(array('permissions' => $perms));
     }
 
     function hasPerm($perm, $global=true) {
@@ -566,7 +584,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         return $this->_teams;
     }
 
-    function getTicketsVisibility() {
+    function getTicketsVisibility($exclude_archived=false) {
 
         // -- Open and assigned to me
         $assigned = Q::any(array(
@@ -583,17 +601,32 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
 
         $visibility = Q::any(new Q(array('status__state'=>'open', $assigned)));
 
+        // -- If access is limited to assigned only, return assigned
+        if ($this->isAccessLimited())
+            return $visibility;
+
         // -- Routed to a department of mine
-        if (!$this->showAssignedOnly() && ($depts=$this->getDepts())) {
-            $visibility->add(array('dept_id__in' => $depts));
-            $visibility->add(array('thread__referrals__dept__id__in' => $depts));
+        if (($depts=$this->getDepts()) && count($depts)) {
+            $in_dept = Q::any(array(
+                'dept_id__in' => $depts,
+                'thread__referrals__dept__id__in' => $depts,
+            ));
+
+            if ($exclude_archived) {
+                $in_dept = Q::all(array(
+                    'status__state__in' => ['open', 'closed'],
+                    $in_dept,
+                ));
+            }
+
+            $visibility->add($in_dept);
         }
 
         return $visibility;
     }
 
-    function applyVisibility($query) {
-        return $query->filter($this->getTicketsVisibility());
+    function applyVisibility($query, $exclude_archived=false) {
+        return $query->filter($this->getTicketsVisibility($exclude_archived));
     }
 
     /* stats */
@@ -735,6 +768,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
                     'default_from_name' => $vars['default_from_name'],
                     'thread_view_order' => $vars['thread_view_order'],
                     'default_ticket_queue_id' => $vars['default_ticket_queue_id'],
+                    'reply_redirect' => ($vars['reply_redirect'] == 'Queue') ? 'Queue' : 'Ticket',
                     )
                 );
         $this->_config = $_config->getInfo();
@@ -845,7 +879,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         return self::getStaffMembers(array('available'=>true));
     }
 
-    static function nsort(QuerySet $qs, $path='', $format=null) {
+    static function getsortby($path='', $format=null) {
         global $cfg;
 
         $format = $format ?: $cfg->getAgentNameFormat();
@@ -853,12 +887,18 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         case 'last':
         case 'lastfirst':
         case 'legal':
-            $qs->order_by("{$path}lastname", "{$path}firstname");
+            $fields = array("{$path}lastname", "{$path}firstname");
             break;
         default:
-            $qs->order_by("${path}firstname", "${path}lastname");
+            $fields = array("${path}firstname", "${path}lastname");
         }
 
+        return $fields;
+    }
+
+    static function nsort(QuerySet $qs, $path='', $format=null) {
+        $fields = self::getsortby($path, $format);
+        $qs->order_by($fields);
         return $qs;
     }
 
@@ -990,8 +1030,8 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
                 }
                 else {
                     throw new ImportError(sprintf(__('Unable to import (%s): %s'),
-                        $data['username'],
-                        print_r($errors, true)
+                        Format::htmlchars($data['username']),
+                        print_r(Format::htmlchars($errors), true)
                     ));
                 }
                 $imported++;
@@ -1374,7 +1414,7 @@ extends AbstractForm {
         );
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         // Index permissions as ['ticket.edit' => 1]
         $clean['perms'] = array_keys($clean['perms']);
@@ -1426,7 +1466,7 @@ extends AbstractForm {
         return __('Change the primary department and primary role of the selected agents');
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         $clean['eavesdrop'] = $clean['eavesdrop'] ? 1 : 0;
         return $clean;
@@ -1521,7 +1561,7 @@ extends AbstractForm {
         );
     }
 
-    function getClean() {
+    function getClean($validate = true) {
         $clean = parent::getClean();
         list($clean['username'],) = preg_split('/[^\w.-]/u', $clean['email'], 2);
         if (mb_strlen($clean['username']) < 3 || Staff::lookup($clean['username']))

@@ -23,13 +23,16 @@ class QueueSortCreator extends MigrationTask {
         foreach ($old ?: array() as $row) {
             // Only save entries with "valid" criteria
             if (!$row['title']
-                    || !($config = JsonDataParser::parse($row['config'], true))
-                    || !($criteria = CustomQueue::isolateCriteria($criteria)))
+                    || !($config = JsonDataParser::parse($row['config'],
+                            true)))
                 continue;
 
-            $row['config'] = JsonDataEncoder::encode(array(
-                        'criteria' => $criteria, 'conditions' => array()));
-            $row['root'] = 'T';
+            $row['root']   = 'T'; // Ticket Queue
+            $row['flags']  = 16; // Saved Search
+            if (($criteria = self::isolateCriteria($config)))
+                $row['config'] = JsonDataEncoder::encode(array(
+                            'criteria' => $criteria,
+                            'conditions' => array()));
             CustomQueue::__create(array_intersect_key($row, array_flip(
                             array('staff_id', 'title', 'config', 'flags',
                                 'root', 'created', 'updated'))));
@@ -53,7 +56,27 @@ class QueueSortCreator extends MigrationTask {
 
         // Set default queue to 'open'
         global $cfg;
-        $cfg->set('default_ticket_queue', 1);
+        if ($cfg)
+            $cfg->set('default_ticket_queue', 1);
+    }
+
+    static function isolateCriteria($config) {
+
+        if (is_string($config))
+            $config = JsonDataParser::parse($config, true);
+
+        foreach ($config as $k => $v) {
+            if (substr($k, -7) != '+search')
+                continue;
+
+            // Fix up some entries
+            list($name,) = explode('+', $k, 2);
+            if (!isset($config["{$name}+method"]))
+                $config["{$name}+method"] = isset($config["{$name}+includes"])
+                    ? 'includes' : 'set';
+        }
+
+        return CustomQueue::isolateCriteria($config);
     }
 }
 return 'QueueSortCreator';

@@ -94,10 +94,9 @@ if ($_POST)
                     <option value="" selected >&mdash; <?php echo __('Select Help Topic');?> &mdash;</option>
                     <?php
                     if($topics=Topic::getHelpTopics()) {
-                      if(!array_key_exists($ticket->topic_id, $topics))
-                      {
+                      if($ticket->topic_id && !array_key_exists($ticket->topic_id, $topics)) {
                         $topics[$ticket->topic_id] = $ticket->topic;
-                        $warn = sprintf(__('%s selected must be active'), __('Help Topic'));
+                        $errors['topicId'] = sprintf(__('%s selected must be active'), __('Help Topic'));
                       }
                         foreach($topics as $id =>$name) {
                             echo sprintf('<option value="%d" %s>%s</option>',
@@ -106,10 +105,15 @@ if ($_POST)
                     }
                     ?>
                 </select>
+
                 <?php
-                if($warn) { ?>
-                    &nbsp;<font class="error"><b>*</b>&nbsp;<?php echo $warn; ?></font>
-                <?php } ?>
+                if (!$info['topicId'] && $cfg->requireTopicToClose()) {
+                ?><i class="icon-warning-sign help-tip warning"
+                    data-title="<?php echo __('Required to close ticket'); ?>"
+                    data-content="<?php echo __('Data is required in this field in order to close the related ticket'); ?>"
+                ></i><?php
+                } ?>
+                &nbsp;<font class="error"><b>*</b>&nbsp;<?php echo $errors['topicId']; ?></font>
             </td>
         </tr>
         <tr>
@@ -155,7 +159,7 @@ if ($_POST)
 <table class="form_table dynamic-forms" width="940" border="0" cellspacing="0" cellpadding="2">
         <?php if ($forms)
             foreach ($forms as $form) {
-                $form->render(true, false, array('mode'=>'edit','width'=>160,'entry'=>$form));
+                $form->render(array('staff'=>true,'mode'=>'edit','width'=>160,'entry'=>$form));
         } ?>
 </table>
 <table class="form_table" width="940" border="0" cellspacing="0" cellpadding="2">

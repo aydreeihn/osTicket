@@ -20,6 +20,9 @@ if (!$lock && $cfg->getTicketLockMode() == Lock::MODE_ON_VIEW)
     $lock = $ticket->acquireLock($thisstaff->getId());
 $mylock = ($lock && $lock->getStaffId() == $thisstaff->getId()) ? $lock : null;
 $id    = $ticket->getId();    //Ticket ID.
+$isManager = $dept->isManager($thisstaff); //Check if Agent is Manager
+$canRelease = ($isManager || $role->hasPerm(Ticket::PERM_RELEASE)); //Check if Agent can release tickets
+$canAnswer = ($isManager || $role->hasPerm(Ticket::PERM_REPLY)); //Check if Agent can mark as answered/unanswered
 
 //Useful warnings and errors the user might want to know!
 if ($ticket->isClosed() && !$ticket->isReopenable())
@@ -74,7 +77,7 @@ if($ticket->isOverdue())
             } ?>
             <span class="action-button pull-right" data-placement="bottom" data-dropdown="#action-dropdown-print" data-toggle="tooltip" title="<?php echo __('Print'); ?>">
                 <i class="icon-caret-down pull-right"></i>
-                <a id="ticket-print" href="tickets.php?id=<?php echo $ticket->getId(); ?>&a=print"><i class="icon-print"></i></a>
+                <a id="ticket-print" aria-label="<?php echo __('Print'); ?>" href="tickets.php?id=<?php echo $ticket->getId(); ?>&a=print"><i class="icon-print"></i></a>
             </span>
             <div id="action-dropdown-print" class="action-dropdown anchor-right">
               <ul>
@@ -118,7 +121,8 @@ if($ticket->isOverdue())
                             || $dept->isMember($thisstaff))
                         ) { ?>
                  <li><a class="no-pjax ticket-action"
-                    data-redirect="tickets.php"
+                    data-redirect="tickets.php?id=<?php echo
+                    $ticket->getId(); ?>"
                     href="#tickets/<?php echo $ticket->getId(); ?>/claim"><i
                     class="icon-chevron-sign-down"></i> <?php echo __('Claim'); ?></a>
                 <?php
@@ -145,33 +149,40 @@ if($ticket->isOverdue())
                 <?php
                  }
 
-                 if($ticket->isOpen() && ($dept && $dept->isManager($thisstaff))) {
-
-                    if($ticket->isAssigned()) { ?>
-                        <li><a  class="confirm-action" id="ticket-release" href="#release"><i class="icon-user"></i> <?php
-                            echo __('Release (unassign) Ticket'); ?></a></li>
-                    <?php
-                    }
-
+                 if ($ticket->isAssigned() && $canRelease) { ?>
+                        <li><a href="#tickets/<?php echo $ticket->getId();
+                            ?>/release" class="ticket-action"
+                             data-redirect="tickets.php?id=<?php echo $ticket->getId(); ?>" >
+                               <i class="icon-unlock"></i> <?php echo __('Release (unassign) Ticket'); ?></a></li>
+                 <?php
+                 }
+                 if($ticket->isOpen() && $isManager) {
                     if(!$ticket->isOverdue()) { ?>
                         <li><a class="confirm-action" id="ticket-overdue" href="#overdue"><i class="icon-bell"></i> <?php
                             echo __('Mark as Overdue'); ?></a></li>
                     <?php
                     }
-
+                 }
+                 if($ticket->isOpen() && $canAnswer) {
                     if($ticket->isAnswered()) { ?>
-                    <li><a class="confirm-action" id="ticket-unanswered" href="#unanswered"><i class="icon-circle-arrow-left"></i> <?php
+                    <li><a href="#tickets/<?php echo $ticket->getId();
+                        ?>/mark/unanswered" class="ticket-action"
+                            data-redirect="tickets.php?id=<?php echo $ticket->getId(); ?>">
+                            <i class="icon-circle-arrow-left"></i> <?php
                             echo __('Mark as Unanswered'); ?></a></li>
                     <?php
                     } else { ?>
-                    <li><a class="confirm-action" id="ticket-answered" href="#answered"><i class="icon-circle-arrow-right"></i> <?php
+                    <li><a href="#tickets/<?php echo $ticket->getId();
+                        ?>/mark/answered" class="ticket-action"
+                            data-redirect="tickets.php?id=<?php echo $ticket->getId(); ?>">
+                            <i class="icon-circle-arrow-right"></i> <?php
                             echo __('Mark as Answered'); ?></a></li>
                     <?php
                     }
                 } ?>
 
                 <?php
-                if ($role->hasPerm(Ticket::PERM_TRANSFER)) { ?>
+                if ($role->hasPerm(Ticket::PERM_REFER)) { ?>
                 <li><a href="#tickets/<?php echo $ticket->getId();
                     ?>/referrals" class="ticket-action"
                      data-redirect="tickets.php?id=<?php echo $ticket->getId(); ?>" >
@@ -258,7 +269,8 @@ if($ticket->isOverdue())
 <div class="clear tixTitle has_bottom_border">
     <h3>
     <?php $subject_field = TicketForm::getInstance()->getField('subject');
-        echo $subject_field->display($ticket->getSubject()); ?>
+        echo $subject_field ? $subject_field->display($ticket->getSubject())
+            : Format::htmlchars($ticket->getSubject()); ?>
     </h3>
 </div>
 <table class="ticket_info" cellspacing="0" cellpadding="0" width="940" border="0">
@@ -370,7 +382,7 @@ if($ticket->isOverdue())
                             else
                               $recipients = 0;
 
-                             echo sprintf('<span><a class="collaborators preview"
+                             echo sprintf('<span><a class="manage-collaborators preview"
                                     href="#thread/%d/collaborators"><span id="t%d-recipients"><i class="icon-group"></i> (%s)</span></a></span>',
                                     $ticket->getThreadId(),
                                     $ticket->getThreadId(),
@@ -595,7 +607,9 @@ foreach (DynamicFormEntry::forTicket($ticket->getId()) as $form) {
     )));
     $displayed = array();
     foreach($answers as $a) {
-        $displayed[] = array($a->getLocal('label'), $a->display() ?: '<span class="faded">&mdash;' . __('Empty') . '&mdash; </span>', $a->getLocal('id'));
+        if (!$a->getField()->isVisibleToStaff())
+            continue;
+        $displayed[] = $a;
     }
     if (count($displayed) == 0)
         continue;
@@ -606,18 +620,28 @@ foreach (DynamicFormEntry::forTicket($ticket->getId()) as $form) {
     </thead>
     <tbody>
 <?php
-    foreach ($displayed as $stuff) {
-        list($label, $v, $id) = $stuff;
+    foreach ($displayed as $a) {
+        $id =  $a->getLocal('id');
+        $label = $a->getLocal('label');
+        $v = $a->display() ?: '<span class="faded">&mdash;' . __('Empty') .  '&mdash; </span>';
+        $field = $a->getField();
+        $isFile = ($field instanceof FileUploadField);
 ?>
         <tr>
             <td width="200"><?php echo Format::htmlchars($label); ?>:</td>
             <td>
-            <?php if ($role->hasPerm(Ticket::PERM_EDIT)) {?>
+            <?php if ($role->hasPerm(Ticket::PERM_EDIT)
+                    && $field->isEditableToStaff()) {
+                    $isEmpty = strpos($v, '&mdash;');
+                    if ($isFile && !$isEmpty)
+                        echo $v.'<br>'; ?>
               <a class="ticket-action" id="inline-update" data-placement="bottom" data-toggle="tooltip" title="<?php echo __('Update'); ?>"
                   data-redirect="tickets.php?id=<?php echo $ticket->getId(); ?>"
                   href="#tickets/<?php echo $ticket->getId(); ?>/field/<?php echo $id; ?>/edit">
                   <?php
-                    if (strlen($v) > 200) {
+                    if (is_string($v) && $isFile && !$isEmpty) {
+                      echo "<i class=\"icon-edit\"></i>";
+                    } elseif (strlen($v) > 200) {
                       echo Format::truncate($v, 200);
                       echo "<br><i class=\"icon-edit\"></i>";
                     }
@@ -625,7 +649,8 @@ foreach (DynamicFormEntry::forTicket($ticket->getId()) as $form) {
                       echo $v;
                   ?>
               </a>
-            <?php } else {
+            <?php
+            } else {
                 echo $v;
             } ?>
             </td>
@@ -693,7 +718,10 @@ if ($errors['err'] && isset($_POST['a'])) {
             id="post-note-tab"><?php echo __('Post Internal Note');?></a></li>
     </ul>
     <?php
-    if ($role->hasPerm(Ticket::PERM_REPLY)) { ?>
+    if ($role->hasPerm(Ticket::PERM_REPLY)) {
+        $replyTo = $_POST['reply-to'] ?: 'all';
+        $emailReply = ($replyTo != 'none');
+        ?>
     <form id="reply" class="tab_content spellcheck exclusive save"
         data-lock-object-id="ticket/<?php echo $ticket->getId(); ?>"
         data-lock-id="<?php echo $mylock ? $mylock->getId() : ''; ?>"
@@ -711,134 +739,191 @@ if ($errors['err'] && isset($_POST['a'])) {
             <?php
             }?>
            <tbody id="to_sec">
-           <?php
-           # XXX: Add user-to-name and user-to-email HTML ID#s
-           if ($addresses = Email::getAddresses(array('smtp' => true))){
-           ?>
            <tr>
                <td width="120">
                    <label><strong><?php echo __('From'); ?>:</strong></label>
                </td>
                <td>
-                   <select id="from_name" name="from_name">
+                   <select id="from_email_id" name="from_email_id">
                      <?php
-                     $sql=' SELECT email_id, email, name, smtp_host '
-                         .' FROM '.EMAIL_TABLE.' WHERE smtp_active = 1';
-                     if(($res=db_query($sql)) && db_num_rows($res)) {
-                         while (list($id, $email, $name, $host) = db_fetch_row($res)){
-                             $email=$name?"$name &lt;$email&gt;":$email;
-                             ?>
-                             <option value="<?php echo $id; ?>"<?php echo ($dept->getEmail()->email_id==$id)?'selected="selected"':''; ?>><?php echo $email; ?></option>
-                         <?php
+                     // Department email (default).
+                     if (($e=$dept->getEmail())) {
+                        echo sprintf('<option value="%s" selected="selected">%s</option>',
+                                 $e->getId(),
+                                 Format::htmlchars($e->getAddress()));
+                     }
+                     // Optional SMTP addreses user can send email via
+                     if (($emails = Email::getAddresses(array('smtp' =>
+                                 true), false)) && count($emails)) {
+                         echo '<option value=""
+                             disabled="disabled">&nbsp;</option>';
+                         $emailId = $_POST['from_email_id'] ?: 0;
+                         foreach ($emails as $e) {
+                             if ($dept->getEmail()->getId() == $e->getId())
+                                 continue;
+                             echo sprintf('<option value="%s" %s>%s</option>',
+                                     $e->getId(),
+                                      $e->getId() == $emailId ?
+                                      'selected="selected"' : '',
+                                      Format::htmlchars($e->getAddress()));
                          }
-                     } ?>
+                     }
+                     ?>
                    </select>
                </td>
            </tr>
-           <?php } ?>
-            <tr>
-                <td width="120">
-                    <label><strong><?php echo __('To'); ?>:</strong></label>
-                </td>
-                <td>
-                    <?php
-                    # XXX: Add user-to-name and user-to-email HTML ID#s
-                    $to =sprintf('%s &lt;%s&gt;',
-                            Format::htmlchars($ticket->getName()),
-                            $ticket->getReplyToEmail());
-                    $emailReply = (!isset($info['emailreply']) || $info['emailreply']);
-                    ?>
-                    <select id="emailreply" name="emailreply">
-                        <option value="1" <?php echo $emailReply ?  'selected="selected"' : ''; ?>><?php echo $to; ?></option>
-                        <option value="0" <?php echo !$emailReply ? 'selected="selected"' : ''; ?>
-                        >&mdash; <?php echo __('Do Not Email Reply'); ?> &mdash;</option>
-                    </select>
-                </td>
-            </tr>
             </tbody>
-            <?php
-            if(1) { //Make CC optional feature? NO, for now.
-                ?>
-            <tbody id="cc_sec"
-                style="display:<?php echo $emailReply?  'table-row-group':'none'; ?>;">
-             <tr>
+            <tbody id="recipients">
+             <tr id="user-row">
                 <td width="120">
-                    <label><strong><?php echo __('Collaborators'); ?>:</strong></label>
+                    <label><strong><?php echo __('Recipients'); ?>:</strong></label>
                 </td>
-                <td>
-                    <input type='checkbox' value='1' name="emailcollab"
-                    id="t<?php echo $ticket->getThreadId(); ?>-emailcollab"
-                        <?php echo ((!$info['emailcollab'] && !$errors) || isset($info['emailcollab']))?'checked="checked"':''; ?>
-                        style="display:<?php echo $ticket->getThread()->getNumCollaborators() ? 'inline-block': 'none'; ?>;"
-                        >
+                <td><a href="#tickets/<?php echo $ticket->getId(); ?>/user"
+                    onclick="javascript:
+                        $.userLookup('ajax.php/tickets/<?php echo $ticket->getId(); ?>/user',
+                                function (user) {
+                                    window.location = 'tickets.php?id='<?php $ticket->getId(); ?>
+                                });
+                        return false;
+                        "><span ><?php
+                            echo Format::htmlchars($ticket->getOwner()->getEmail()->getAddress());
+                    ?></span></a>
+                </td>
+              </tr>
+               <tr><td>&nbsp;</td>
+                   <td>
+                   <div style="margin-bottom:2px;">
                     <?php
-                   ?>
-                </td>
-             </tr>
-             <?php $collaborators = $ticket->getThread()->getCollaborators();
-             $cc_cids = array();
-             $bcc_cids = array();
-             foreach ($collaborators as $c) {
-               if ($c->flags & Collaborator::FLAG_CC && $c->flags & Collaborator::FLAG_ACTIVE)
-                  $cc_cids[] = $c->user_id;
-                elseif (!($c->flags & Collaborator::FLAG_CC) && $c->flags & Collaborator::FLAG_ACTIVE) {
-                  $bcc_cids[] = $c->user_id;
-                }
-             }
-            ?>
-             <tr>
-                 <td width="160"><b><?php echo __('Cc'); ?>:</b></td>
-                 <td>
-                     <select class="collabSelections" name="ccs[]" id="cc_users" multiple="multiple"
-                         data-placeholder="<?php echo __('Select Contacts'); ?>">
+                         echo sprintf('<span><a id="show_ccs">
+                                 <i id="arrow-icon" class="icon-caret-right"></i>&nbsp;%s </a>
+                                 &nbsp;
+                                 <a class="manage-collaborators
+                                 collaborators preview noclick %s"
+                                  href="#thread/%d/collaborators">
+                                 (%s)</a></span>',
+                                 __('Collaborators'),
+                                 $ticket->getNumCollaborators()
+                                  ? '' : 'hidden',
+                                 $ticket->getThreadId(),
+                                 sprintf(__('%s of %s'),
+                                         sprintf('<span
+                                             class="collabselection__count">%d</span>',
+                                             $ticket->getNumActiveCollaborators()),
+                                         sprintf('<span
+                                             class="collabselection__total">%d</span>',
+                                              $ticket->getNumCollaborators())
+                                         )
+                                     );
+                    ?>
+                   </div>
+                   <div id="ccs" class="hidden">
+                     <div>
+                        <span style="margin: 10px 5px 1px 0;" class="faded pull-left"><?php echo __('Select or Add New Collaborators'); ?>&nbsp;</span>
+                        <?php
+                        if ($role->hasPerm(Ticket::PERM_REPLY)) { ?>
+                        <span class="action-button pull-left" style="margin: 2px  0 5px 20px;"
+                            data-dropdown="#action-dropdown-collaborators"
+                            data-placement="bottom"
+                            data-toggle="tooltip"
+                            title="<?php echo __('Manage Collaborators'); ?>"
+                            >
+                            <i class="icon-caret-down pull-right"></i>
+                            <a class="ticket-action" id="collabs-button"
+                                data-redirect="tickets.php?id=<?php echo
+                                $ticket->getId(); ?>"
+                                href="#thread/<?php echo
+                                $ticket->getThreadId(); ?>/collaborators">
+                                <i class="icon-group"></i></a>
+                         </span>
                          <?php
-                         foreach ($cc_cids as $u) {
-                           if($u != $ticket->user_id && !in_array($u, $bcc_cids)) {
-                             ?>
-                             <option value="<?php echo $u; ?>" <?php
-                             if (in_array($u, $cc_cids))
-                             echo 'selected="selected"'; ?>><?php echo User::lookup($u); ?>
-                           </option>
-                         <?php } } ?>
-                         ?>
-                     </select>
-                     <br/><span class="error"><?php echo $errors['ccs']; ?></span>
+                        }  ?>
+                         <span class="error">&nbsp;&nbsp;<?php echo $errors['ccs']; ?></span>
+                        </div>
+                        <?php
+                        if ($role->hasPerm(Ticket::PERM_REPLY)) { ?>
+                        <div id="action-dropdown-collaborators" class="action-dropdown anchor-right">
+                          <ul>
+                             <li><a class="manage-collaborators"
+                                href="#thread/<?php echo
+                                $ticket->getThreadId(); ?>/add-collaborator/addcc"><i
+                                class="icon-plus"></i> <?php echo __('Add New'); ?></a>
+                             <li><a class="manage-collaborators"
+                                href="#thread/<?php echo
+                                $ticket->getThreadId(); ?>/collaborators"><i
+                                class="icon-cog"></i> <?php echo __('Manage Collaborators'); ?></a>
+                          </ul>
+                        </div>
+                        <?php
+                        } ?>
+                     <div class="clear">
+                      <select id="collabselection" name="ccs[]" multiple="multiple"
+                          data-placeholder="<?php
+                            echo __('Select Active Collaborators'); ?>">
+                          <?php
+                          $collabs = $ticket->getCollaborators();
+                          foreach ($collabs as $c) {
+                              echo sprintf('<option value="%s" %s class="%s">%s</option>',
+                                      $c->getUserId(),
+                                      $c->isActive() ?
+                                      'selected="selected"' : '',
+                                      $c->isActive() ?
+                                      'active' : 'disabled',
+                                      $c->getName());
+                          }
+                          ?>
+                      </select>
+                     </div>
+                 </div>
                  </td>
              </tr>
              <tr>
-               <td width="160"><b><?php echo __('Bcc'); ?>:</b></td>
-               <td>
-                   <select class="collabSelections" name="bccs[]" id="bcc_users" multiple="multiple"
-                       data-placeholder="<?php echo __('Select Contacts'); ?>">
-                       <?php
-                       foreach ($bcc_cids as $u) {
-                         if($u != $ticket->user_id && !in_array($u, $cc_cids)) {
-                           ?>
-                           <option value="<?php echo $u; ?>" <?php
-                           if (in_array($u, $bcc_cids))
-                           echo 'selected="selected"'; ?>><?php echo User::lookup($u); ?>
-                         </option>
-                       <?php } } ?>
-                       ?>
-                   </select>
-                   <br/><span class="error"><?php echo $errors['bccs']; ?></span>
-               </td>
+                <td width="120">
+                    <label><?php echo __('Reply To'); ?>:</label>
+                </td>
+                <td>
+                    <?php
+                    // Supported Reply Types
+                    $replyTypes = array(
+                            'all'   =>  __('All Active Recipients'),
+                            'user'  =>  sprintf('%s (%s)',
+                                __('Ticket Owner'),
+                                Format::htmlchars($ticket->getOwner()->getEmail())),
+                            'none'  =>  sprintf('&mdash; %s  &mdash;',
+                                __('Do Not Email Reply'))
+                            );
+
+                    $replyTo = $_POST['reply-to'] ?: 'all';
+                    $emailReply = ($replyTo != 'none');
+                    ?>
+                    <select id="reply-to" name="reply-to">
+                        <?php
+                        foreach ($replyTypes as $k => $v) {
+                            echo sprintf('<option value="%s" %s>%s</option>',
+                                    $k,
+                                    ($k == $replyTo) ?
+                                    'selected="selected"' : '',
+                                    $v);
+                        }
+                        ?>
+                    </select>
+                    <i class="help-tip icon-question-sign" href="#reply_types"></i>
+                </td>
              </tr>
             </tbody>
-            <?php
-            } ?>
             <tbody id="resp_sec">
-            <?php
-            if($errors['response']) {?>
-            <tr><td width="120">&nbsp;</td><td class="error"><?php echo $errors['response']; ?>&nbsp;</td></tr>
-            <?php
-            }?>
+            <tr><td colspan="2">&nbsp;</td></tr>
             <tr>
                 <td width="120" style="vertical-align:top">
                     <label><strong><?php echo __('Response');?>:</strong></label>
                 </td>
                 <td>
-<?php if ($cfg->isCannedResponseEnabled()) { ?>
+                <?php
+                if ($errors['response'])
+                    echo sprintf('<div class="error">%s</div>',
+                            $errors['response']);
+
+                if ($cfg->isCannedResponseEnabled()) { ?>
+                  <div>
                     <select id="cannedResp" name="cannedResp">
                         <option value="0" selected="selected"><?php echo __('Select a canned response');?></option>
                         <option value='original'><?php echo __('Original Message'); ?></option>
@@ -852,8 +937,8 @@ if ($errors['err'] && isset($_POST['a'])) {
                         }
                         ?>
                     </select>
-                    <br>
-<?php } # endif (canned-resonse-enabled)
+                    </div>
+                <?php } # endif (canned-resonse-enabled)
                     $signature = '';
                     switch ($thisstaff->getDefaultSignatureType()) {
                     case 'dept':
@@ -864,6 +949,7 @@ if ($errors['err'] && isset($_POST['a'])) {
                         $signature = $thisstaff->getSignature();
                         break;
                     } ?>
+                  <div>
                     <input type="hidden" name="draft_id" value=""/>
                     <textarea name="response" id="response" cols="50"
                         data-signature-field="signature" data-dept-id="<?php echo $dept->getId(); ?>"
@@ -878,6 +964,7 @@ if ($errors['err'] && isset($_POST['a'])) {
     list($draft, $attrs) = Draft::getDraftAndDataAttrs('ticket.response', $ticket->getId(), $info['response']);
     echo $attrs; ?>><?php echo $_POST ? $info['response'] : $draft;
                     ?></textarea>
+                </div>
                 <div id="reply_form_attachments" class="attachments">
                 <?php
                     print $response_form->getField('attachments')->render();
@@ -1162,6 +1249,21 @@ $(function() {
         });
     });
 
+    $(document).on('click', 'a.manage-collaborators', function(e) {
+        e.preventDefault();
+        var url = 'ajax.php/'+$(this).attr('href').substr(1);
+        $.dialog(url, 201, function (xhr) {
+           var resp = $.parseJSON(xhr.responseText);
+           if (resp.user && !resp.users)
+              resp.users.push(resp.user);
+            // TODO: Process resp.users
+           $('.tip_box').remove();
+        }, {
+            onshow: function() { $('#user-search').focus(); }
+        });
+        return false;
+     });
+
     // Post Reply or Note action buttons.
     $('a.post-response').click(function (e) {
         var $r = $('ul.tabs > li > a'+$(this).attr('href')+'-tab');
@@ -1186,75 +1288,54 @@ $(function() {
         return false;
     });
 
-});
+  $('#show_ccs').click(function() {
+    var show = $('#arrow-icon');
+    var collabs = $('a#managecollabs');
+    $('#ccs').slideToggle('fast', function(){
+        if ($(this).is(":hidden")) {
+            collabs.hide();
+            show.removeClass('icon-caret-down').addClass('icon-caret-right');
+        } else {
+            collabs.show();
+            show.removeClass('icon-caret-right').addClass('icon-caret-down');
+        }
+    });
+    return false;
+   });
 
-$(function() {
-  $('.collabSelections').on("select2:select", function(e) {
-    var el = $(this);
-    var tid = <?php echo $ticket->getThreadId(); ?>;
-    var target = e.currentTarget.id;
-    var addTo = (target == 'cc_users') ? 'addcc' : 'addbcc';
+  $('.collaborators.noclick').click(function() {
+    $('#show_ccs').trigger('click');
+   });
 
-   if(el.val().includes("NEW")) {
-     $("li[title='— Add New —']").remove();
-     var url = 'ajax.php/thread/' + tid + '/add-collaborator/' + addTo ;
-      $.userLookup(url, function(user) {
-        e.preventDefault();
-         if($('.dialog#confirm-action').length) {
-             $('.dialog#confirm-action #action').val(addTo);
-             $('#confirm-form').append('<input type=hidden name=user_id value='+user.id+' />');
-             $('#overlay').show();
-         }
-      });
-         var arr = el.val();
-         var removeStr = "NEW";
-
-         arr.splice($.inArray(removeStr, arr),1);
-         $(this).val(arr);
+  $('#collabselection').select2({
+    width: '350px',
+    allowClear: true,
+    sorter: function(data) {
+        return data.filter(function (item) {
+                return !item.selected;
+                });
+    },
+    templateResult: function(e) {
+        var $e = $(
+        '<span><i class="icon-user"></i> ' + e.text + '</span>'
+        );
+        return $e;
     }
- });
-
- $('.collabSelections').on("select2:unselecting", function(e) {
-   var el = $(this);
-   var target = '#' + e.currentTarget.id;
-     var confirmation = confirm(__("Are you sure you want to remove the collaborator from receiving this reply?"));
-     if (confirmation == false) {
-       $(target).on("select2:opening", function(e) {
-         return false;
-       });
-       return false;
-     }
-
-});
-
- $('.collabSelections').select2({
-   width: '350px',
-   minimumInputLength: 3,
-   ajax: {
-     url: "ajax.php/users/local",
-     dataType: 'json',
-     data: function (params) {
-       if (!params) {
-         params.term = 'test';
-       }
-       return {
-         q: params.term,
-       };
-     },
-     processResults: function (data) {
-       data[0] = {name: "\u2014 Add New \u2014", id: "NEW"};
-       return {
-         results: $.map(data, function (item) {
-           return {
-             text: item.name,
-             slug: item.slug,
-             id: item.id
-           }
-         })
-       };
-     }
-   }
- });
-
+   }).on("select2:unselecting", function(e) {
+        if (!confirm(__("Are you sure you want to DISABLE the collaborator?")))
+            e.preventDefault();
+   }).on("select2:selecting", function(e) {
+        if (!confirm(__("Are you sure you want to ENABLE the collaborator?")))
+             e.preventDefault();
+   }).on('change', function(e) {
+    var id = e.currentTarget.id;
+    var count = $('li.select2-selection__choice').length;
+    var total = $('#' + id +' option').length;
+    $('.' + id + '__count').html(count);
+    $('.' + id + '__total').html(total);
+    $('.' + id + '__total').parent().toggle((total));
+   }).on('select2:opening select2:closing', function(e) {
+    $(this).parent().find('.select2-search__field').prop('disabled', true);
+   });
 });
 </script>

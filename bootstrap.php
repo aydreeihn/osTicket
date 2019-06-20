@@ -102,6 +102,7 @@ class Bootstrap {
         define('THREAD_COLLABORATOR_TABLE', $prefix.'thread_collaborator');
         define('TICKET_STATUS_TABLE', $prefix.'ticket_status');
         define('TICKET_PRIORITY_TABLE',$prefix.'ticket_priority');
+        define('EVENT_TABLE',$prefix.'event');
 
         define('TASK_TABLE', $prefix.'task');
         define('TASK_CDATA_TABLE', $prefix.'task__cdata');
@@ -293,6 +294,16 @@ class Bootstrap {
         }
         if (extension_loaded('iconv'))
             iconv_set_encoding('internal_encoding', 'UTF-8');
+
+        if (intval(phpversion()) < 7) {
+            function random_int($a, $b) {
+                return rand($a, $b);
+            }
+        }
+
+        function mb_str_wc($str) {
+            return count(preg_split('~[^\p{L}\p{N}\'].+~u', trim($str)));
+        }
     }
 
     function croak($message) {
@@ -313,6 +324,9 @@ unset($here); unset($h);
 define('INCLUDE_DIR',ROOT_DIR.'include/'); //Change this if include is moved outside the web path.
 define('PEAR_DIR',INCLUDE_DIR.'pear/');
 define('SETUP_DIR',ROOT_DIR.'setup/');
+
+define('CLIENTINC_DIR',INCLUDE_DIR.'client/');
+define('STAFFINC_DIR',INCLUDE_DIR.'staff/');
 
 define('UPGRADE_DIR', INCLUDE_DIR.'upgrader/');
 define('I18N_DIR', INCLUDE_DIR.'i18n/');

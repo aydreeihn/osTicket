@@ -69,8 +69,8 @@
   conditions: "[]"
 
 - id: 6
-  name: "Status Name"
-  primary: "status__name"
+  name: "Status"
+  primary: "status__id"
   truncate: "wrap"
   annotations: "[]"
   conditions: "[]"
@@ -126,6 +126,13 @@
   name: "Last Response"
   primary: "thread__lastresponse"
   filter: "date:human"
+  truncate: "wrap"
+  annotations: "[]"
+  conditions: "[]"
+
+- id: 14
+  name: "Team"
+  primary: "team_id"
   truncate: "wrap"
   annotations: "[]"
   conditions: "[]"

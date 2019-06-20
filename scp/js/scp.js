@@ -164,7 +164,19 @@ var scp_prep = function() {
     $('form.save, form:has(table.list)').submit(function() {
         $(window).unbind('beforeunload');
         $.toggleOverlay(true);
-        $('#loading').show();
+        // Disable staff-side Post Reply/Open buttons to help prevent
+        // duplicate POST
+        var form = $(this);
+        $(this).find('input[type="submit"]').each(function (index) {
+            // Clone original input
+            $(this).clone(false).removeAttr('id').prop('disabled', true).insertBefore($(this));
+
+            // Hide original input and add it to top of form
+            $(this).hide();
+            form.prepend($(this));
+        });
+        $('#overlay, #loading').show();
+        return true;
      });
 
     $('select#tpl_options').change(function() {
@@ -193,6 +205,13 @@ var scp_prep = function() {
         }
      });
 
+    $('form select#cannedResp').select2({width: '350px'});
+    $('form select#cannedResp').on('select2:opening', function (e) {
+        var redactor = $('.richtext', $(this).closest('form')).data('redactor');
+        if (redactor)
+            redactor.selection.save();
+    });
+
     $('form select#cannedResp').change(function() {
 
         var fObj = $(this).closest('form');
@@ -214,9 +233,10 @@ var scp_prep = function() {
                     var box = $('#response',fObj),
                         redactor = box.data('redactor');
                     if(canned.response) {
-                        if (redactor)
+                        if (redactor) {
+                            redactor.selection.restore();
                             redactor.insert.html(canned.response);
-                        else
+                        } else
                             box.val(box.val() + canned.response);
 
                         if (redactor)
@@ -376,7 +396,8 @@ var scp_prep = function() {
            $('input[name^='+attr+']', ui.item.parent('tbody')).each(function(i, el) {
                $(el).val(i + 1 + offset);
            });
-       }
+       },
+       'cancel': ':input,button,div[contenteditable=true]'
    });
 
     // Scroll to a stop or top on scroll-up click
@@ -462,7 +483,7 @@ var scp_prep = function() {
 
   $('div.tab_content[id] div.error:not(:empty)').each(function() {
     var div = $(this).closest('.tab_content');
-    $('a[href^=#'+div.attr('id')+']').parent().addClass('error');
+    $('a[href^="#'+div.attr('id')+'"]').parent().addClass('error');
   });
 
   $('[data-toggle="tooltip"]').tooltip()
@@ -513,9 +534,10 @@ var scp_prep = function() {
         url: 'ajax.php/queue/counts',
         dataType: 'json',
         success: function(json) {
-          $('li > span.queue-count').each(function(i, e) {
+          $('li span.queue-count').each(function(i, e) {
             var $e = $(e);
             $e.text(json['q' + $e.data('queueId')]);
+            $(e).parents().find('#queue-count-bucket').show();
           });
         }
       });
@@ -573,6 +595,7 @@ $(document).ajaxSend(function(event, xhr, settings) {
 /* Get config settings from the backend */
 jQuery.fn.exists = function() { return this.length>0; };
 
+$.pjax.defaults.timeout = 30000;
 $.translate_format = function(str) {
     var translation = {
         'DD':   'oo',
@@ -801,7 +824,7 @@ $.confirm = function(message, title, options) {
             .append($('<span class="buttons pull-left"></span>')
                 .append($('<input type="button" class="close"/>')
                     .attr('value', __('Cancel'))
-                    .click(function() { hide(); })
+                    .click(function() { hide();  D.resolve(false); })
             )).append($('<span class="buttons pull-right"></span>')
                 .append($('<input type="button"/>')
                     .attr('value', __('OK'))
@@ -813,8 +836,9 @@ $.confirm = function(message, title, options) {
 };
 
 $.userLookup = function (url, cb) {
-    $.dialog(url, 201, function (xhr) {
-        var user = $.parseJSON(xhr.responseText);
+    $.dialog(url, 201, function (xhr, user) {
+        if ($.type(user) == 'string')
+            user = $.parseJSON(user);
         if (cb) return cb(user);
     }, {
         onshow: function() { $('#user-search').focus(); }
@@ -822,8 +846,9 @@ $.userLookup = function (url, cb) {
 };
 
 $.orgLookup = function (url, cb) {
-    $.dialog(url, 201, function (xhr) {
-        var org = $.parseJSON(xhr.responseText);
+    $.dialog(url, 201, function (xhr, org) {
+        if ($.type(org) == 'string')
+            org = $.parseJSON(user);
         if (cb) cb(org);
     }, {
         onshow: function() { $('#org-search').focus(); }
@@ -1031,12 +1056,11 @@ $(document).on('submit', 'form', function() {
 });
 
 //Collaborators
-$(document).on('click', 'a.collaborator, a.collaborators', function(e) {
+$(document).on('click', 'a.collaborator, a.collaborators:not(.noclick)', function(e) {
     e.preventDefault();
     var url = 'ajax.php/'+$(this).attr('href').substr(1);
     $.dialog(url, 201, function (xhr) {
        var resp = $.parseJSON(xhr.responseText);
-       $('input#t'+resp.id+'-emailcollab').show();
        $('#t'+resp.id+'-recipients').text(resp.text);
        $('.tip_box').remove();
     }, {
@@ -1108,7 +1132,7 @@ if ($.support.pjax) {
     if (!$this.hasClass('no-pjax')
         && !$this.closest('.no-pjax').length
         && $this.attr('href').charAt(0) != '#')
-      $.pjax.click(event, {container: $this.data('pjaxContainer') || $('#pjax-container'), timeout: 2000});
+      $.pjax.click(event, {container: $this.data('pjaxContainer') || '#pjax-container', timeout: 30000});
   })
 }
 
@@ -1144,15 +1168,16 @@ $(document).on('change', 'select[data-quick-add]', function() {
 });
 
 // Quick note interface
-$(document).on('click.note', '.quicknote .action.edit-note', function() {
+$(document).on('click.note', '.quicknote .action.edit-note', function(e) {
+    // Prevent Auto-Scroll to top of page
+    e.preventDefault();
     var note = $(this).closest('.quicknote'),
         body = note.find('.body'),
         T = $('<textarea>').text(body.html());
     if (note.closest('.dialog, .tip_box').length)
         T.addClass('no-bar small');
     body.replaceWith(T);
-    $.redact(T);
-    $(T).redactor('focus.setStart');
+    $.redact(T, { focusEnd: true });
     note.find('.action.edit-note').hide();
     note.find('.action.save-note').show();
     note.find('.action.cancel-edit').show();
@@ -1225,8 +1250,7 @@ $(document).on('click', '#new-note', function() {
     note.replaceWith(T);
     $('<p>').addClass('submit').css('text-align', 'center')
         .append(button).appendTo(T.parent());
-    $.redact(T);
-    $(T).redactor('focus.setStart');
+    $.redact(T, { focusEnd: true });
     return false;
 });
 
@@ -1278,49 +1302,25 @@ window.relativeAdjust = setInterval(function() {
 
 // Add 'afterShow' event to jQuery elements,
 // thanks http://stackoverflow.com/a/1225238/1025836
-(function ($) {
+jQuery(function($) {
     var _oldShow = $.fn.show;
 
-    $.fn.show = function (/*speed, easing, callback*/) {
+    // This should work with jQuery 3 with or without jQuery UI
+    $.fn.show = function() {
         var argsArray = Array.prototype.slice.call(arguments),
-            duration = argsArray[0],
-            easing,
-            callback,
-            callbackArgIndex;
-
-        // jQuery recursively calls show sometimes; we shouldn't
-        //  handle such situations. Pass it to original show method.
-        if (!this.selector) {
-            _oldShow.apply(this, argsArray);
-            return this;
-        }
-
-        if (argsArray.length === 2) {
-            if ($.isFunction(argsArray[1])) {
-                callback = argsArray[1];
-                callbackArgIndex = 1;
-            } else {
-                easing = argsArray[1];
-            }
-        } else if (argsArray.length === 3) {
-            easing = argsArray[1];
-            callback = argsArray[2];
-            callbackArgIndex = 2;
-        }
-        return $(this).each(function () {
-            var obj = $(this),
-                oldCallback = callback,
-                newCallback = function () {
-                    if ($.isFunction(oldCallback)) {
-                        oldCallback.apply(obj);
-                    }
-                };
-            if (callback) {
-                argsArray[callbackArgIndex] = newCallback;
-            }
-            obj.trigger('beforeShow');
-            _oldShow.apply(obj, argsArray);
-            obj.trigger('afterShow');
+            arg = argsArray[0],
+            options = argsArray[1] || {duration: 0};
+        if (typeof(arg) === 'number')
+            options.duration = arg;
+        else
+            options.effect = arg;
+        return this.each(function () {
+            var obj = $(this);
+            _oldShow.call(obj, $.extend(options, {
+                complete: function() {
+                    obj.trigger('afterShow');
+                }
+            }));
         });
-    };
-})(jQuery);
+    }
+});

@@ -98,6 +98,10 @@ class DateTimeZone {
     static function listIdentifiers() {}
 }
 
+class DateTimeImmutable {
+    function createFromMutable() {}
+}
+
 class Phar {
     static function isValidPharFilename() {}
     function setStub() {}
@@ -223,10 +227,13 @@ class Mail_mime {
     function setTXTBody() {}
     function setHTMLBody() {}
     function addCc() {}
+    function addTo() {}
+    function addBcc() {}
 }
 
 class mPDF {
     function Output() {}
+    function SetAutoFont() {}
 }
 
 class HashPassword {

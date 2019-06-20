@@ -26,8 +26,8 @@ class Export {
 
     static function dumpQuery($sql, $headers, $how='csv', $options=array()) {
         $exporters = array(
-            'csv' => CsvResultsExporter,
-            'json' => JsonResultsExporter
+            'csv' => 'CsvResultsExporter',
+            'json' => 'JsonResultsExporter'
         );
         $exp = new $exporters[$how]($sql, $headers, $options);
         return $exp->dump();
@@ -57,11 +57,14 @@ class Export {
             $fields[$key] = $f;
             $cdata[$key] = $f->getLocal('label');
         }
+
+        if (!is_array($target))
+          $target = CustomQueue::getExportableFields() + $cdata;
+
         // Reset the $sql query
         $tickets = $sql->models()
             ->select_related('user', 'user__default_email', 'dept', 'staff',
                 'team', 'staff', 'cdata', 'topic', 'status', 'cdata__:priority')
-            ->options(QuerySet::OPT_NOCACHE)
             ->annotate(array(
                 'collab_count' => TicketThread::objects()
                     ->filter(array('ticket__ticket_id' => new SqlField('ticket_id', 1)))
@@ -70,6 +73,10 @@ class Export {
                     ->filter(array('ticket__ticket_id' => new SqlField('ticket_id', 1)))
                     ->filter(array('entries__attachments__inline' => 0))
                     ->aggregate(array('count' => SqlAggregate::COUNT('entries__attachments__id'))),
+                'reopen_count' => TicketThread::objects()
+                    ->filter(array('ticket__ticket_id' => new SqlField('ticket_id', 1)))
+                    ->filter(array('events__annulled' => 0, 'events__event_id' => Event::getIdByName('reopened')))
+                    ->aggregate(array('count' => SqlAggregate::COUNT('events__id'))),
                 'thread_count' => TicketThread::objects()
                     ->filter(array('ticket__ticket_id' => new SqlField('ticket_id', 1)))
                     ->exclude(array('entries__flags__hasbit' => ThreadEntry::FLAG_HIDDEN))
@@ -254,7 +261,7 @@ class Export {
         $filename = $filename ?: sprintf('Agents-%s.csv',
                 strftime('%Y%m%d'));
         Http::download($filename, "text/$how");
-        $depts = Dept::getDepartments();
+        $depts = Dept::getDepartments(null, true, Dept::DISPLAY_DISABLED);
         echo self::dumpQuery($agents, array(
                     '::getName'  =>  'Name',
                     '::getUsername' => 'Username',

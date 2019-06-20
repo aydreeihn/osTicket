@@ -73,15 +73,16 @@ class TicketsAjaxAPI extends AjaxController {
             $email = $T['user__default_email__address'];
             $count = $T['tickets'];
             if ($T['number']) {
-                $tickets[] = array('id'=>$T['number'], 'value'=>$T['number'],
+                $tickets[$T['number']] = array('id'=>$T['number'], 'value'=>$T['number'],
                     'info'=>"{$T['number']} — {$email}",
                     'matches'=>$_REQUEST['q']);
             }
             else {
-                $tickets[] = array('email'=>$email, 'value'=>$email,
+                $tickets[$email] = array('email'=>$email, 'value'=>$email,
                     'info'=>"$email ($count)", 'matches'=>$_REQUEST['q']);
             }
         }
+        $tickets = array_values($tickets);
 
         return $this->json_encode($tickets);
     }
@@ -357,7 +358,7 @@ class TicketsAjaxAPI extends AjaxController {
             $format.='.plain';
 
         $varReplacer = function (&$var) use($ticket) {
-            return $ticket->replaceVars($var);
+            return $ticket->replaceVars($var, array('recipient' => $ticket->getOwner()));
         };
 
         include_once(INCLUDE_DIR.'class.canned.php');
@@ -443,6 +444,9 @@ function refer($tid, $target=null) {
         switch ($_POST['do']) {
         case 'refer':
             if ($form->isValid() && $ticket->refer($form, $errors)) {
+                $clean = $form->getClean();
+                if ($clean['comments'])
+                    $ticket->logNote('Referral', $clean['comments'], $thisstaff);
                 $_SESSION['::sysmsgs']['msg'] = sprintf(
                         __('%s successfully'),
                         sprintf(
@@ -524,8 +528,7 @@ function refer($tid, $target=null) {
                           )
                       );
 
-              $impl = $field->getImpl();
-              if ($impl instanceof FileUploadField)
+              if ($field instanceof FileUploadField)
                   $field->save();
               Http::response(201, $field->getClean());
           }
@@ -653,6 +656,65 @@ function refer($tid, $target=null) {
 
     }
 
+    function release($tid) {
+        global $thisstaff;
+
+        if (!($ticket=Ticket::lookup($tid)))
+            Http::response(404, __('No such ticket'));
+
+        if (!$ticket->checkStaffPerm($thisstaff, Ticket::PERM_RELEASE) && !$thisstaff->isManager())
+            Http::response(403, __('Permission denied'));
+
+        $errors = array();
+        if (!$ticket->isAssigned())
+            $errors['err'] = __('Ticket is not assigned!');
+
+        $info = array(':title' => sprintf(__('Ticket #%s: %s'),
+                    $ticket->getNumber(),
+                    __('Release Confirmation')));
+
+        $form = ReleaseForm::instantiate($_POST);
+        $hasData = ($_POST['sid'] || $_POST['tid']);
+
+        $staff = $ticket->getStaff();
+        $team = $ticket->getTeam();
+        if ($_POST) {
+            if ($hasData && $ticket->release($_POST, $errors)) {
+                $data = array();
+
+                if ($staff && !$ticket->getStaff())
+                    $data['staff'] = array($staff->getId(), (string) $staff->getName()->getOriginal());
+                if ($team && !$ticket->getTeam())
+                    $data['team'] = $team->getId();
+                $ticket->logEvent('released', $data);
+
+                $comments = $form->getComments();
+                if ($comments) {
+                    $title = __('Assignment Released');
+                    $_errors = array();
+
+                    $ticket->postNote(
+                        array('note' => $comments, 'title' => $title),
+                        $_errors, $thisstaff, false);
+                }
+
+                $_SESSION['::sysmsgs']['msg'] = __('Ticket assignment released successfully');
+                Http::response(201, $ticket->getId());
+            }
+
+            if (!$hasData)
+                $errors['err'] = __('Please check an assignee to release assignment');
+
+            $form->addErrors($errors);
+            $info['error'] = $errors['err'] ?: __('Unable to release ticket assignment');
+        }
+
+        if($errors && $errors['err'])
+            $info['error'] = $errors['err'] ?: __('Unable to release ticket');
+
+        include STAFFINC_DIR . 'templates/release.tmpl.php';
+    }
+
     function massProcess($action, $w=null)  {
         global $thisstaff, $cfg;
 
@@ -731,14 +793,25 @@ function refer($tid, $target=null) {
                                 );
 
                     if ($depts) {
-                        $members->filter(Q::any( array(
+                        $all_agent_depts = Dept::objects()->filter(
+                            Q::all( array('id__in' => $depts,
+                            Q::not(array('flags__hasbit'
+                                => Dept::FLAG_ASSIGN_MEMBERS_ONLY)),
+                            Q::not(array('flags__hasbit'
+                                => Dept::FLAG_ASSIGN_PRIMARY_ONLY))
+                            )))->values_flat('id');
+                        if (!count($all_agent_depts)) {
+                            $members->filter(Q::any( array(
                                         'dept_id__in' => $depts,
                                         Q::all(array(
                                             'dept_access__dept__id__in' => $depts,
                                             Q::not(array('dept_access__dept__flags__hasbit'
-                                                => Dept::FLAG_ASSIGN_MEMBERS_ONLY))
+                                                => Dept::FLAG_ASSIGN_MEMBERS_ONLY,
+                                                'dept_access__dept__flags__hasbit'
+                                                    => Dept::FLAG_ASSIGN_PRIMARY_ONLY))
                                             ))
                                         )));
+                        }
                     }
 
                     switch ($cfg->getAgentNameFormat()) {
@@ -1193,6 +1266,70 @@ function refer($tid, $target=null) {
         return self::_changeSelectedTicketsStatus($state, $info, $errors);
     }
 
+    function markAs($tid, $action='') {
+        global $thisstaff;
+
+        // Standard validation
+        if (!($ticket=Ticket::lookup($tid)))
+            Http::response(404, __('No such ticket'));
+
+        if (!$ticket->checkStaffPerm($thisstaff, Ticket::PERM_REPLY) && !$thisstaff->isManager())
+            Http::response(403, __('Permission denied'));
+
+        $errors = array();
+        $info = array(':title' => __('Please Confirm'));
+
+        // Instantiate form for comment field
+        $form = MarkAsForm::instantiate($_POST);
+
+        // Mark as answered or unanswered
+        if ($_POST) {
+            switch($action) {
+                case 'answered':
+                    if($ticket->isAnswered())
+                        $errors['err'] = __('Ticket is already marked as answered');
+                    elseif (!$ticket->markAnswered())
+                        $errors['err'] = __('Cannot mark ticket as answered');
+                    break;
+
+                case 'unanswered':
+                    if(!$ticket->isAnswered())
+                        $errors['err'] = __('Ticket is already marked as unanswered');
+                    elseif (!$ticket->markUnAnswered())
+                        $errors['err'] - __('Cannot mark ticket as unanswered');
+                    break;
+
+                default:
+                    Http::response(404, __('Unknown action'));
+            }
+
+            // Retrun errors to form (if any)
+            if($errors) {
+                $info['error'] = $errors['err'] ?: sprintf(__('Unable to mark ticket as %s'), $action);
+                $form->addErrors($errors);
+            } else {
+                // Add comment (if provided)
+                $comments = $form->getComments();
+                if ($comments) {
+                    $title = __(sprintf('Ticket Marked %s', ucfirst($action)));
+                    $_errors = array();
+
+                    $ticket->postNote(
+                        array('note' => $comments, 'title' => $title),
+                        $_errors, $thisstaff, false);
+                }
+
+                // Add success messages and log activity
+                $_SESSION['::sysmsgs']['msg'] = sprintf(__('Ticket marked as %s successfully'), $action);
+                $msg = sprintf(__('Ticket flagged as %s by %s'), $action, $thisstaff->getName());
+                $ticket->logActivity(sprintf(__('Ticket Marked %s'), ucfirst($action)), $msg);
+                Http::response(201, $ticket->getId());
+            }
+        }
+
+        include STAFFINC_DIR . 'templates/mark-as.tmpl.php';
+    }
+
     function triggerThreadAction($ticket_id, $thread_id, $action) {
         $thread = ThreadEntry::lookup($thread_id);
         if (!$thread)
@@ -1319,7 +1456,7 @@ function refer($tid, $target=null) {
                 && ($f=$iform->getField('duedate'))) {
             $f->configure('max', Misc::db2gmtime($ticket->getEstDueDate()));
         }
-
+        $vars = array_merge($_SESSION[':form-data'] ?: array(), $vars);
 
         if ($_POST) {
             Draft::deleteForNamespace(
@@ -1345,12 +1482,48 @@ function refer($tid, $target=null) {
                 if ($desc
                         && $desc->isAttachmentsEnabled()
                         && ($attachments=$desc->getWidget()->getAttachments()))
-                    $vars['cannedattachments'] = $attachments->getClean();
+                    $vars['files'] = $attachments->getFiles();
                 $vars['staffId'] = $thisstaff->getId();
                 $vars['poster'] = $thisstaff;
                 $vars['ip_address'] = $_SERVER['REMOTE_ADDR'];
-                if (($task=Task::create($vars, $errors)))
-                    Http::response(201, $task->getId());
+                if (($task=Task::create($vars, $errors))) {
+
+                  if ($_SESSION[':form-data']['eid']) {
+                    //add internal note to ticket:
+                    $taskLink = sprintf('<a href="tasks.php?id=%d"><b>#%s</b></a>',
+                        $task->getId(),
+                        $task->getNumber());
+
+                    $entryLink = sprintf('<a href="#entry-%d"><b>%s</b></a>',
+                        $_SESSION[':form-data']['eid'],
+                        Format::datetime($_SESSION[':form-data']['timestamp']));
+
+                    $note = array(
+                            'title' => __('Task Created From Thread Entry'),
+                            'body' => sprintf(__(
+                                // %1$s is the task ID number and %2$s is the thread
+                                // entry date
+                                'Task %1$s<br/> Thread Entry: %2$s'),
+                                $taskLink, $entryLink)
+                            );
+
+                  $ticket->logNote($note['title'], $note['body'], $thisstaff);
+
+                    //add internal note to task:
+                    $ticketLink = sprintf('<a href="tickets.php?id=%d"><b>#%s</b></a>',
+                        $ticket->getId(),
+                        $ticket->getNumber());
+
+                    $note = array(
+                            'title' => __('Task Created From Thread Entry'),
+                            'note' => sprintf(__('This Task was created from Ticket %1$s'), $ticketLink),
+                    );
+
+                    $task->postNote($note, $errors, $thisstaff);
+                  }
+                }
+
+                  Http::response(201, $task->getId());
             }
 
             $info['error'] = sprintf('%s - %s', __('Error adding task'), __('Please try again!'));
@@ -1395,9 +1568,9 @@ function refer($tid, $target=null) {
             $vars = $_POST;
             switch ($_POST['a']) {
             case 'postnote':
-                $attachments = $note_attachments_form->getField('attachments')->getClean();
-                $vars['cannedattachments'] = array_merge(
-                    $vars['cannedattachments'] ?: array(), $attachments);
+                $attachments = $note_attachments_form->getField('attachments')->getFiles();
+                $vars['files'] = array_merge(
+                    $vars['files'] ?: array(), $attachments);
                 if (($note=$task->postNote($vars, $errors, $thisstaff))) {
                     $msg=__('Note posted successfully');
                     // Clear attachment list
@@ -1411,9 +1584,9 @@ function refer($tid, $target=null) {
                 }
                 break;
             case 'postreply':
-                $attachments = $reply_attachments_form->getField('attachments')->getClean();
-                $vars['cannedattachments'] = array_merge(
-                    $vars['cannedattachments'] ?: array(), $attachments);
+                $attachments = $reply_attachments_form->getField('attachments')->getFiles();
+                $vars['files'] = array_merge(
+                    $vars['files'] ?: array(), $attachments);
                 if (($response=$task->postReply($vars, $errors))) {
                     $msg=__('Update posted successfully');
                     // Clear attachment list

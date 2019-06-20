@@ -75,11 +75,11 @@ $plots = $report->getPlotData();
     $date = str_ireplace('FROM_UNIXTIME(', '',$date);
     $date = str_ireplace(')', '',$date);
     $date = new DateTime('@'.$date);
-    if ($thisstaff->getTimezone())
-      $date->setTimeZone(new DateTimeZone($thisstaff->getTimezone()));
+    $date->setTimeZone(new DateTimeZone($cfg->getTimezone()));
+    $timezone = $date->format('e');
     $range[] = $date->format('F j, Y');
   }
-  echo __($range[0] . ' - ' . $range[1]);
+  echo __($range[0] . ' - ' . $range[1] .  ' (' . Format::timezone($timezone) . ')');
 ?>
 
 <ul class="clean tabs">
@@ -180,4 +180,16 @@ foreach ($groups as $g=>$desc) {
 </form>
 <script>
     $.drawPlots(<?php echo JsonDataEncoder::encode($report->getPlotData()); ?>);
+    // Set Selected Period For Dashboard Stats and Export
+    <?php if ($report && $report->end) { ?>
+        $("div#basic_search select option").each(function(){
+            // Remove default selection
+            if ($(this)[0].selected)
+                $(this).removeAttr('selected');
+            // Set the selected period by the option's value (periods equal
+            // option's values)
+            if ($(this).val() == "<?php echo $report->end; ?>")
+                $(this).attr("selected","selected");
+        });
+    <?php } ?>
 </script>

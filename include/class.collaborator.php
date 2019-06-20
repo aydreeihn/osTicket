@@ -41,7 +41,7 @@ implements EmailContact, ITicketUser {
         return Format::htmlchars($this->toString());
     }
     function toString() {
-        return sprintf('%s <%s>', $this->getName(), $this->getEmail());
+        return sprintf('"%s" <%s>', $this->getName(), $this->getEmail());
     }
 
     function getId() {
@@ -150,12 +150,6 @@ implements EmailContact, ITicketUser {
       $this->save();
     }
 
-    public function setBcc() {
-      $this->setFlag(Collaborator::FLAG_ACTIVE, true);
-      $this->setFlag(Collaborator::FLAG_CC, false);
-      $this->save();
-    }
-
     function isCc() {
         return !!($this->flags & self::FLAG_CC);
     }
@@ -174,6 +168,8 @@ implements EmailContact, ITicketUser {
 
     static function create($vars=false) {
         $inst = new static($vars);
+        $inst->setFlag(Collaborator::FLAG_ACTIVE, true);
+        $inst->setFlag(Collaborator::FLAG_CC, true);
         $inst->created = SqlFunction::NOW();
         return $inst;
     }

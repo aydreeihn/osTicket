@@ -4,6 +4,10 @@
 // $searches = All visibile saved searches
 // $child_selected - <bool> true if the selected queue is a descendent
 // $adhoc - not FALSE if an adhoc advanced search exists
+
+$searches = SavedQueue::getHierarchicalQueues($thisstaff);
+if ($queue && !$queue->parent_id && $queue->staff_id)
+    $child_selected = true;
 ?>
 <li class="primary-only item <?php if ($child_selected) echo 'active'; ?>">
 <?php
@@ -16,13 +20,10 @@
   <div class="customQ-dropdown">
     <ul class="scroll-height">
       <!-- Start Dropdown and child queues -->
-      <?php foreach ($searches->findAll(array(
-            'staff_id' => $thisstaff->getId(),
-            Q::not(array(
-                'flags__hasbit' => CustomQueue::FLAG_PUBLIC
-            ))
-      )) as $q) {
-        include 'queue-subnavigation.tmpl.php';
+      <?php foreach ($searches as $search) {
+          list($q, $children) = $search;
+          if ($q->checkAccess($thisstaff))
+            include 'queue-subnavigation.tmpl.php';
       } ?>
      <?php
      if (isset($_SESSION['advsearch'])) { ?>

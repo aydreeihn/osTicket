@@ -522,7 +522,7 @@ class DynamicList extends VerySimpleModel implements CustomList {
         foreach (DynamicList::objects() as $list) {
             $selections['list-'.$list->id] =
                 array($list->getPluralName(),
-                    SelectionField, $list->get('id'));
+                    'SelectionField', $list->get('id'));
         }
         return $selections;
     }
@@ -1282,7 +1282,7 @@ implements CustomListItem, TemplateVariable, Searchable {
             'state' => new TicketStateChoiceField(array(
                 'label' => __('State'),
             )),
-            'name' => new TextBoxField(array(
+            'id' => new TicketStatusChoiceField(array(
                 'label' => __('Status Name'),
             )),
         );
@@ -1421,6 +1421,9 @@ implements CustomListItem, TemplateVariable, Searchable {
     }
 
     function display() {
+
+        return $this->getLocalName();
+
         return sprintf('<a class="preview" href="#"
                 data-preview="#list/%d/items/%d/preview">%s</a>',
                 $this->getListId(),

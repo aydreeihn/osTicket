@@ -3,7 +3,7 @@
  * @version v1.11.0
  * @title Add ticket referral
  *
- * This patch adds a table for thread referral as well as thread event states of reffered and deleted
+ * This patch adds a table for thread referral as well as thread event states of referred and deleted
  */
 
 CREATE TABLE `%TABLE_PREFIX%thread_referral` (
@@ -16,10 +16,6 @@ CREATE TABLE `%TABLE_PREFIX%thread_referral` (
   UNIQUE KEY `ref` (`object_id`,`object_type`,`thread_id`),
   KEY `thread_id` (`thread_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
-
-ALTER TABLE `%TABLE_PREFIX%thread_event`
-  CHANGE `state` `state` enum('created','closed','reopened','assigned','transferred', 'reffered', 'overdue','edited','viewed','error','collab','resent', 'deleted') NOT NULL;
-
 
  -- Finished with patch
 UPDATE `%TABLE_PREFIX%config`

@@ -20,7 +20,7 @@ if($topic && $_REQUEST['a']!='add') {
     $qs += array('a' => $_REQUEST['a']);
     $forms = TicketForm::objects();
 }
-$info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
+$info=Format::htmlchars(($errors && $_POST)?$_POST:$info, true);
 ?>
 
 <h2><?php echo $title; ?>
@@ -61,9 +61,9 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
             <td>
                 <select name="status">
-                  <option value="Active"<?php echo ($info['status'] == __('Active'))?'selected="selected"':'';?>><?php echo __('Active'); ?></option>
-                  <option value="Disabled"<?php echo ($info['status'] == __('Disabled'))?'selected="selected"':'';?>><?php echo __('Disabled'); ?></option>
-                  <option value="Archived"<?php echo ($info['status'] == __('Archived'))?'selected="selected"':'';?>><?php echo __('Archived'); ?></option>
+                  <option value="active"<?php echo ($info['status'] == __('Active'))?'selected="selected"':'';?>><?php echo __('Active'); ?></option>
+                  <option value="disabled"<?php echo ($info['status'] == __('Disabled'))?'selected="selected"':'';?>><?php echo __('Disabled'); ?></option>
+                  <option value="archived"<?php echo ($info['status'] == __('Archived'))?'selected="selected"':'';?>><?php echo __('Archived'); ?></option>
                 </select>
                 &nbsp;<span class="error">*&nbsp;</span> <i class="help-tip icon-question-sign" href="#status"></i>
             </td>

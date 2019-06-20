@@ -7,6 +7,11 @@ class FilterAction extends VerySimpleModel {
         'table' => FILTER_ACTION_TABLE,
         'pk' => array('id'),
         'ordering' => array('sort'),
+        'joins' => array(
+            'filter' => array(
+                'constraint' => array('filter_id' => 'Filter.id'),
+            ),
+        ),
     );
 
     static $registry = array();
@@ -69,7 +74,9 @@ class FilterAction extends VerySimpleModel {
 
     function getImpl() {
         if (!isset($this->_impl)) {
-            if (!($I = self::lookupByType($this->type, $this)))
+            //TODO: Figure out why $this->type gives an id
+            $existing = is_numeric($this->type) ? (self::lookup($this->type)) : $this;
+            if (!($I = self::lookupByType($existing->type, $existing)))
                 throw new Exception(sprintf(
                     '%s: No such filter action registered', $this->type));
             $this->_impl = $I;
@@ -80,10 +87,10 @@ class FilterAction extends VerySimpleModel {
     function setFilterFlag($actions, $flag, $bool) {
         foreach ($actions as $action) {
           $filter = Filter::lookup($action->filter_id);
-          if ($filter) {
-            if ($flag == 'dept') $filter->setFlag(Filter::FLAG_INACTIVE_DEPT, $bool);
-            if ($flag == 'topic') $filter->setFlag(Filter::FLAG_INACTIVE_HT, $bool);
-          }
+          if ($filter && ($flag == 'dept') && ($filter->hasFlag(Filter::FLAG_INACTIVE_DEPT) != $bool))
+            $filter->setFlag(Filter::FLAG_INACTIVE_DEPT, $bool);
+          if ($filter && ($flag == 'topic') && ($filter->hasFlag(Filter::FLAG_INACTIVE_HT) != $bool))
+            $filter->setFlag(Filter::FLAG_INACTIVE_HT, $bool);
         }
     }
 
@@ -559,8 +566,9 @@ class FA_SendEmail extends TriggerAction {
     }
 
     function getConfigurationOptions() {
-        $choices = array('' => __('Default System Email'));
-        $choices += Email::getAddresses();
+        global $cfg;
+
+        $choices = Email::getAddresses();
 
         return array(
             'recipients' => new TextboxField(array(
@@ -606,7 +614,7 @@ class FA_SendEmail extends TriggerAction {
             'from' => new ChoiceField(array(
                 'label' => __('From Email'),
                 'choices' => $choices,
-                'default' => '',
+                'default' => $cfg->getDefaultEmail()->getId(),
             )),
         );
     }

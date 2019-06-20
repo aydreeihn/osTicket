@@ -195,19 +195,6 @@ implements TemplateVariable, Searchable {
       return !!($this->flags & self::FLAG_ACTIVE);
     }
 
-    function clearInactiveTopic($topic_id) {
-      global $cfg;
-
-      $emails = Email::objects()->filter(array('topic_id'=>$topic_id))->values_flat('email_id');
-      if ($emails) {
-        foreach ($emails as $email_id) {
-          $email = Email::lookup($email_id[0]);
-          $email->topic_id = $cfg->getDefaultTopicId();
-          $email->save();
-        }
-      }
-    }
-
     function getStatus() {
       if($this->flags & self::FLAG_ACTIVE)
         return 'Active';
@@ -329,7 +316,7 @@ implements TemplateVariable, Searchable {
             $this->flags &= ~$flag;
     }
 
-    static function getHelpTopics($publicOnly=false, $disabled=false, $localize=true) {
+    static function getHelpTopics($publicOnly=false, $disabled=false, $localize=true, $whitelist=array()) {
       global $cfg;
       static $topics, $names = array();
 
@@ -385,7 +372,8 @@ implements TemplateVariable, Searchable {
           $info = $topics[$id];
           if ($publicOnly && !$info['public'])
               continue;
-          if (!$disabled && $info['disabled'])
+          //if topic is disabled + we're not getting all topics OR topic is not in whitelist
+          if ($info['disabled'] && (!$disabled || ($whitelist && !in_array($id, $whitelist))))
               continue;
           if ($disabled === self::DISPLAY_DISABLED && $info['disabled'])
               $n .= " - ".__("(disabled)");
@@ -471,23 +459,23 @@ implements TemplateVariable, Searchable {
         $this->notes = Format::sanitize($vars['notes']);
 
         $filter_actions = FilterAction::objects()->filter(array('type' => 'topic', 'configuration' => '{"topic_id":'. $this->getId().'}'));
-        if ($filter_actions && $vars['status'] == __('Active'))
+        if ($filter_actions && $vars['status'] == 'active')
           FilterAction::setFilterFlag($filter_actions, 'topic', false);
         else
           FilterAction::setFilterFlag($filter_actions, 'topic', true);
 
         switch ($vars['status']) {
-          case __('Active'):
+          case 'active':
             $this->setFlag(self::FLAG_ACTIVE, true);
             $this->setFlag(self::FLAG_ARCHIVED, false);
             break;
 
-          case __('Disabled'):
+          case 'disabled':
             $this->setFlag(self::FLAG_ACTIVE, false);
             $this->setFlag(self::FLAG_ARCHIVED, false);
             break;
 
-          case __('Archived'):
+          case 'archived':
             $this->setFlag(self::FLAG_ACTIVE, false);
             $this->setFlag(self::FLAG_ARCHIVED, true);
             break;

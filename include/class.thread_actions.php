@@ -53,7 +53,7 @@ class TEA_ShowEmailRecipients extends ThreadEntryAction {
                 $this->entry->getEmailHeader(), true);
 
         $recipients = array();
-        foreach (array('To', 'TO', 'Cc', 'CC', 'Bcc', 'BCC') as $k) {
+        foreach (array('To', 'TO', 'Cc', 'CC') as $k) {
             if (isset($hdr[$k]) && $hdr[$k] &&
                 ($addresses=Mail_Parse::parseAddressList($hdr[$k]))) {
                 foreach ($addresses as $addr) {
@@ -135,6 +135,13 @@ class TEA_EditThreadEntry extends ThreadEntryAction {
                 && $T->getDept()->getManagerId() == $thisstaff->getId()
             )
             || ($T instanceof Ticket
+                && ($role = $thisstaff->getRole($T->getDeptId(), $T->isAssigned($thisstaff)))
+                && $role->hasPerm(ThreadEntry::PERM_EDIT)
+            )
+            || ($T instanceof Task
+                && $T->getDept()->getManagerId() == $thisstaff->getId()
+            )
+            || ($T instanceof Task
                 && ($role = $thisstaff->getRole($T->getDeptId(), $T->isAssigned($thisstaff)))
                 && $role->hasPerm(ThreadEntry::PERM_EDIT)
             )
@@ -489,10 +496,11 @@ $.dialog(url, [201], function(xhr, resp) {
     if (!!redirect)
         $.pjax({url: redirect, container: '#pjax-container'});
     else
-        $.pjax({url: 'tickets.php?id=%d#tasks', container: '#pjax-container'});
+        $.pjax({url: '%s.php?id=%d#tasks', container: '#pjax-container'});
 });
 JS
         , $this->getAjaxUrl(),
+        $this->entry->getThread()->getObjectType() == 'T' ? 'tickets' : 'tasks',
         $this->entry->getThread()->getObjectId()
         );
     }
@@ -507,21 +515,39 @@ JS
     }
 
     private function trigger__get() {
-
         $vars = array(
                 'description' => Format::htmlchars($this->entry->getBody()));
+
+        if ($_SESSION[':form-data'])
+          unset($_SESSION[':form-data']);
+
+        $_SESSION[':form-data']['tid'] = $this->entry->getThread()->getObJectId();
+        $_SESSION[':form-data']['eid'] = $this->entry->getId();
+        $_SESSION[':form-data']['timestamp'] = $this->entry->getCreateDate();
+        $_SESSION[':form-data']['type'] = $this->entry->getThread()->object_type;
+
         if (($f= TaskForm::getInstance()->getField('description'))) {
               $k = 'attach:'.$f->getId();
+              unset($_SESSION[':form-data'][$k]);
               foreach ($this->entry->getAttachments() as $a)
-                  if (!$a->inline && $a->file)
-                      $vars[$k][] = $a->file->getId();
+                  if (!$a->inline && $a->file) {
+                    $_SESSION[':form-data'][$k][$a->file->getId()] = $a->getFilename();
+                    $_SESSION[':uploadedFiles'][$a->file->getId()] = $a->getFilename();
+                  }
         }
 
-        return $this->getTicketsAPI()->addTask($this->getObjectId(), $vars);
+        if ($this->entry->getThread()->getObjectType()  == 'T')
+          return $this->getTicketsAPI()->addTask($this->getObjectId(), $vars);
+        else
+          return $this->getTasksAPI()->add($this->getObjectId(), $vars);
+
     }
 
     private function trigger__post() {
+      if ($this->entry->getThread()->getObjectType()  == 'T')
         return $this->getTicketsAPI()->addTask($this->getObjectId());
+      else
+        return $this->getTasksAPI()->add($this->getObjectId());
     }
 
 }

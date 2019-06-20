@@ -72,7 +72,8 @@ foreach (Internationalization::sortKeyedList($annotations) as $class=>$desc) {
       $(function() {
         var addAnnotation = function(type, desc, icon, pos) {
           var template = $('.annotation.template', '#annotations'),
-              clone = template.clone().show().removeClass('template').insertBefore(template),
+              clone = template.clone().removeClass('hidden')
+                  .removeClass('template').insertBefore(template),
               input = clone.find('[data-field=input]'),
               colid = clone.closest('.tab_content').data('colId'),
               column = clone.find('[data-field=column]'),
@@ -122,6 +123,8 @@ if ($column->getConditions(false)) {
   foreach ($column->getConditions() as $i=>$condition) {
      $id = QueueColumnCondition::getUid();
      list($label, $field) = $condition->getField();
+     if (!$label || !$field)
+        continue;
      $field_name = $condition->getFieldName();
      $object_id = $column->getId();
      include STAFFINC_DIR . 'templates/queue-column-condition.tmpl.php';

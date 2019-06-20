@@ -161,10 +161,19 @@ implements Searchable {
         return $collaborators;
     }
 
+    function isCollaborator($user) {
+        return $this->collaborators->findFirst(array(
+                    'user_id'     => $user->getId(),
+                    'thread_id'   => $this->getId()));
+    }
+
     function addCollaborator($user, $vars, &$errors, $event=true) {
 
         if (!$user)
             return null;
+
+        if ($this->isCollaborator($user))
+            return false;
 
         $vars = array_merge(array(
                 'threadId' => $this->getId(),
@@ -219,7 +228,7 @@ implements Searchable {
 
             foreach ($vars['cid'] as $c) {
               $collab = Collaborator::lookup($c);
-              if(get_class($collab) == 'Collaborator') {
+              if (($collab instanceof Collaborator)) {
                 $collab->setFlag(Collaborator::FLAG_ACTIVE, true);
                 $collab->save();
               }
@@ -238,18 +247,6 @@ implements Searchable {
           $inactive->update(array(
               'updated' => SqlFunction::NOW(),
           ));
-        }
-
-        if($vars['recipientType']) {
-          $combo = array_combine($vars['uid'], $vars['recipientType']);
-          foreach ($combo as $id => $type) {
-            $collab = Collaborator::lookup($id);
-            if(get_class($collab) == 'Collaborator') {
-              $type == 'Cc' ? $collab->setFlag(Collaborator::FLAG_CC, true) :
-                $collab->setFlag(Collaborator::FLAG_CC, false);
-              $collab->save();
-            }
-          }
         }
 
         unset($this->ht['active_collaborators']);
@@ -275,6 +272,17 @@ implements Searchable {
         return $this->_participants;
     }
 
+    // MailingList of recipients (collaborators)
+    function getRecipients() {
+        $list = new MailingList();
+        if ($collabs = $this->getActiveCollaborators()) {
+            foreach ($collabs as $c)
+                $list->addCc($c);
+        }
+
+        return $list;
+    }
+
     function getReferral($id, $type) {
 
         return $this->referrals->findFirst(array(
@@ -285,7 +293,7 @@ implements Searchable {
     function isReferred($to=null, $strict=false) {
 
         if (is_null($to) || !$this->referrals)
-            return ($this->referrals);
+            return ($this->referrals && $this->referrals->count());
 
         switch (true) {
         case $to instanceof Staff:
@@ -299,21 +307,29 @@ implements Searchable {
                 return false;
 
             // Referred to staff's department
-            if ($to->getDepts() && $this->referrals->filter(array(
-                            'object_id__in' => $to->getDepts(),
-                            'object_type'   => ObjectModel::OBJECT_TYPE_DEPT)))
+            if ($this->referrals->findFirst(array(
+                   'object_id__in' => $to->getDepts(),
+                   'object_type'   => ObjectModel::OBJECT_TYPE_DEPT)))
                 return true;
-            // Referred to staff's  team
-            if ($to->getTeams() && $this->referrals->filter(array(
+
+            // Referred to staff's teams
+            if ($to->getTeams() && $this->referrals->findFirst(array(
                             'object_id__in' => $to->getTeams(),
-                            'object_type'   => ObjectModel::OBJECT_TYPE_TEAM)))
+                            'object_type'   => ObjectModel::OBJECT_TYPE_TEAM
+                            )))
                 return true;
+
+            return false;
+            break;
+        case $to instanceof Team:
+            //Referred to a Team
+            return ($this->getReferral($to->getId(),
+                        ObjectModel::OBJECT_TYPE_TEAM));
             break;
         case $to instanceof Dept:
             // Refered to the dept
-            if ($this->getReferral($to->getId(),
-                        ObjectModel::OBJECT_TYPE_DEPT))
-                return true;
+            return ($this->getReferral($to->getId(),
+                        ObjectModel::OBJECT_TYPE_DEPT));
             break;
         }
 
@@ -323,7 +339,7 @@ implements Searchable {
     function refer($to) {
 
         if ($this->isReferred($to, true))
-            return true;
+            return false;
 
         $vars = array('thread_id' => $this->getId());
         switch (true) {
@@ -437,6 +453,7 @@ implements Searchable {
             'ip' =>     '',
             'reply_to' => $entry,
             'recipients' => $mailinfo['recipients'],
+            'thread_entry_recipients' => $mailinfo['thread_entry_recipients'],
             'to-email-id' => $mailinfo['to-email-id'],
             'autorespond' => !isset($mailinfo['passive']),
         );
@@ -454,7 +471,7 @@ implements Searchable {
 
         $body = $mailinfo['message'];
 
-        // extra handling for determining Cc and Bcc collabs
+        // extra handling for determining Cc collabs
         if ($mailinfo['email']) {
           $staffSenderId = Staff::getIdByEmail($mailinfo['email']);
 
@@ -471,8 +488,6 @@ implements Searchable {
 
                 if ($collaborator && ($collaborator->isCc()))
                   $vars['thread-type'] = 'M';
-                else
-                  $vars['thread-type'] = 'N';
               }
             }
           }
@@ -760,6 +775,8 @@ implements TemplateVariable {
     const FLAG_COLLABORATOR             = 0x0020;   // Message from collaborator
     const FLAG_BALANCED                 = 0x0040;   // HTML does not need to be balanced on ::display()
     const FLAG_SYSTEM                   = 0x0080;   // Entry is a system note.
+    const FLAG_REPLY_ALL                = 0x00100;  // Agent response, reply all
+    const FLAG_REPLY_USER               = 0x00200;  // Agent response, reply to User
 
     const PERM_EDIT     = 'thread.edit';
 
@@ -769,7 +786,6 @@ implements TemplateVariable {
     var $_actions;
     var $is_autoreply;
     var $is_bounce;
-    var $_posterType;
 
     static protected $perms = array(
         self::PERM_EDIT => array(
@@ -783,7 +799,6 @@ implements TemplateVariable {
             'M' => 'message',
             'R' => 'response',
             'N' => 'note',
-            'B' => 'bccmessage',
     );
 
     function getTypeName() {
@@ -848,32 +863,29 @@ implements TemplateVariable {
         return $this->poster;
     }
 
-    function getPosterType() {
-      $this->staff_id ?
-        $this->posterType = __('Agent') : $this->posterType = __('User');
-
-      return $this->posterType;
-    }
-
     function getTitle() {
         return $this->title;
     }
 
     function getBody() {
-
         if (!isset($this->_body)) {
             $body = $this->body;
             if ($body == null && $this->getNumAttachments()) {
-                foreach ($this->attachments as $a)
+                $attachments = Attachment::objects()
+                   ->filter(array(
+                               'inline' => 1,
+                               'object_id' => $this->getId(),
+                               'type' => ObjectModel::OBJECT_TYPE_THREAD,
+                               'file__type__in' => array('text/html','text/plain'))
+                           );
+                foreach ($attachments as $a)
                     if ($a->inline && ($f=$a->getFile()))
                         $body .= $f->getData();
             }
-
             $this->_body = ThreadEntryBody::fromFormattedText($body, $this->format,
                 array('balanced' => $this->hasFlag(self::FLAG_BALANCED))
             );
         }
-
         return $this->_body;
     }
 
@@ -1090,21 +1102,20 @@ implements TemplateVariable {
             $files = array($files);
 
         $ids = array();
-        foreach ($files as $name => $file) {
-            $F = array('inline' => is_array($file) && @$file['inline']);
+        foreach ($files as $id => $info) {
+            $F = array('inline' => is_array($info) && @$info['inline']);
+            $AF = null;
 
-            if (is_numeric($file))
-                $fileId = $file;
-            elseif ($file instanceof AttachmentFile)
-                $fileId = $file->getId();
-            elseif (is_array($file) && isset($file['id']))
-                $fileId = $file['id'];
-            elseif ($AF = AttachmentFile::create($file))
+            if ($info instanceof AttachmentFile)
+                $fileId = $info->getId();
+            elseif (is_array($info) && isset($info['id']))
+                $fileId = $info['id'];
+            elseif ($AF = AttachmentFile::create($info))
                 $fileId = $AF->getId();
             elseif ($add_error) {
-                $error = $file['error']
-                    ?: sprintf(_S('Unable to import attachment - %s'),
-                        $name ?: $file['name']);
+                $error = $info['error']
+                    ?: sprintf(_S('Unable to save attachment - %s'),
+                        $info['name'] ?: $info['id']);
                 if (is_numeric($error) && isset($error_descriptions[$error])) {
                     $error = sprintf(_S('Error #%1$d: %2$s'), $error,
                         _S($error_descriptions[$error]));
@@ -1127,15 +1138,15 @@ implements TemplateVariable {
 
             $F['id'] = $fileId;
 
-            if (is_string($name))
-                $F['name'] = $name;
+            if (is_string($info))
+                $F['name'] = $info;
             if (isset($AF))
                 $F['file'] = $AF;
 
             // Add things like the `key` field, but don't change current
             // keys of the file array
-            if (is_array($file))
-                $F += $file;
+            if (is_array($info))
+                $F += $info;
 
             // Key is required for CID rewriting in the body
             if (!isset($F['key']) && ($AF = AttachmentFile::lookup($F['id'])))
@@ -1165,11 +1176,13 @@ implements TemplateVariable {
         elseif (is_string($name)) {
             $filename = $name;
         }
+
         if ($filename) {
             // This should be a noop since the ORM caches on PK
             $F = @$file['file'] ?: AttachmentFile::lookup($file['id']);
             // XXX: This is not Unicode safe
-            if ($F && 0 !== strcasecmp($F->name, $filename))
+            // TODO: fix name lookup
+            if ($F && strcasecmp($F->name, $filename) !== 0)
                 $att->name = $filename;
         }
 
@@ -1378,9 +1391,17 @@ implements TemplateVariable {
             ) {
                 if (@$mid_info['userId']) {
                     $mailinfo['userId'] = $mid_info['userId'];
+
+                    $user = User::lookupByEmail($mailinfo['email']);
+                    if ($user && $mailinfo['userId'] != $user->getId())
+                      $mailinfo['userId'] = $user->getId();
                 }
                 elseif (@$mid_info['staffId']) {
                     $mailinfo['staffId'] = $mid_info['staffId'];
+
+                    $staffId = Staff::getIdByEmail($mailinfo['email']);
+                    if ($staffId && $mailinfo['staffId'] != $staffId)
+                      $mailinfo['staffId'] = $staffId;
                 }
 
                 // Capture the user type
@@ -1493,7 +1514,7 @@ implements TemplateVariable {
                 $vars['body'] = new TextThreadEntryBody($vars['body']);
         }
 
-        if (!($body = $vars['body']->getClean()))
+        if (!($body = Format::strip_emoticons($vars['body']->getClean())))
             $body = '-'; //Special tag used to signify empty message as stored.
 
         $poster = $vars['poster'];
@@ -1511,39 +1532,25 @@ implements TemplateVariable {
             'poster' => $poster,
             'source' => $vars['source'],
             'flags' => $vars['flags'] ?: 0,
-            'recipients' => $vars['recipients'],
         ));
 
         //add recipients to thread entry
-        $recipients = array();
-        $ticket = Thread::objects()->filter(array('id'=>$vars['threadId']))->values_flat('object_id')->first();
-        $ticketUser = Ticket::objects()->filter(array('ticket_id'=>$ticket[0]))->values_flat('user_id')->first();
+        if ($vars['thread_entry_recipients']) {
+            $count = 0;
+            foreach ($vars['thread_entry_recipients'] as $key => $value)
+                $count = $count + count($value);
 
-        //User
-        if ($ticketUser) {
-          $uEmail = UserEmailModel::objects()->filter(array('user_id'=>$ticketUser[0]))->values_flat('address')->first();
-          $u = array();
-          $u[$ticketUser[0]] = $uEmail[0];
-          $recipients['to'] = $u;
+            if ($count > 1)
+                $entry->flags |= ThreadEntry::FLAG_REPLY_ALL;
+            else
+                $entry->flags |= ThreadEntry::FLAG_REPLY_USER;
+
+            $entry->recipients = json_encode($vars['thread_entry_recipients']);
         }
+
 
         if (Collaborator::getIdByUserId($vars['userId'], $vars['threadId']))
           $entry->flags |= ThreadEntry::FLAG_COLLABORATOR;
-
-        //Cc collaborators
-        if($vars['ccs'] && $vars['emailcollab'] == 1) {
-          $cc = Collaborator::getCollabList($vars['ccs']);
-          $recipients['cc'] = $cc;
-        }
-
-        //Bcc Collaborators
-        if($vars['bccs'] && $vars['emailcollab'] == 1) {
-          $bcc = Collaborator::getCollabList($vars['bccs']);
-          $recipients['bcc'] = $bcc;
-        }
-
-        if (($vars['do'] == 'create' || $vars['emailreply'] == 1) && $recipients)
-          $entry->recipients = json_encode($recipients);
 
         if ($entry->format == 'html')
             // The current codebase properly balances html
@@ -1592,7 +1599,7 @@ implements TemplateVariable {
         $attached_files = array();
         foreach (array(
             // Web uploads and canned attachments
-            $vars['files'], $vars['cannedattachments'],
+            $vars['files'],
             // Emailed or API attachments
             $vars['attachments'],
             // Inline images (attached to the draft)
@@ -1864,6 +1871,7 @@ class ThreadEvent extends VerySimpleModel {
 
     // Valid events for database storage
     const ASSIGNED  = 'assigned';
+    const RELEASED  = 'released';
     const CLOSED    = 'closed';
     const CREATED   = 'created';
     const COLLAB    = 'collab';
@@ -1899,6 +1907,7 @@ class ThreadEvent extends VerySimpleModel {
     function getIcon() {
         $icons = array(
             'assigned'  => 'hand-right',
+            'released'  => 'unlock',
             'collab'    => 'group',
             'created'   => 'magic',
             'overdue'   => 'time',
@@ -2065,16 +2074,80 @@ class ThreadEvent extends VerySimpleModel {
                     $subclasses[$class::$state] = $class;
             }
         }
+        $this->state = Event::getNameById($this->event_id);
         if (!($class = $subclasses[$this->state]))
             return $this;
         return new $class($this->ht);
     }
 }
 
+class Event extends VerySimpleModel {
+    static $meta = array(
+        'table' => EVENT_TABLE,
+        'pk' => array('id'),
+    );
+
+    function getInfo() {
+        return $this->ht;
+    }
+
+    function getId() {
+        return $this->id;
+    }
+
+    function getName() {
+        return $this->name;
+    }
+
+    function getDescription() {
+        return $this->description;
+    }
+
+    static function getNameById($id) {
+        return array_search($id, self::getIds());
+    }
+
+    static function getIdByName($name) {
+         $ids =  self::getIds();
+         return $ids[$name] ?: 0;
+    }
+
+    static function getIds() {
+        static $ids;
+
+        if (!isset($ids)) {
+            $ids = array();
+            $events = self::objects()->values_flat('id', 'name');
+            foreach ($events as $row) {
+                list($id, $name) = $row;
+                $ids[$name] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    static function create($vars=false, &$errors=array()) {
+        $event = new static($vars);
+        return $event;
+    }
+
+    static function __create($vars, &$errors=array()) {
+        $event = self::create($vars);
+        $event->save();
+        return $event;
+    }
+
+    function save($refetch=false) {
+        return parent::save($refetch);
+    }
+}
+
 class ThreadEvents extends InstrumentedList {
     function annul($event) {
+        $event_id = Event::getIdByName($event);
         $this->queryset
-            ->filter(array('state' => $event))
+            ->filter(array('event_id' => $event_id))
             ->update(array('annulled' => 1));
     }
 
@@ -2085,7 +2158,7 @@ class ThreadEvents extends InstrumentedList {
      * $object - Object to log activity for
      * $state - State name of the activity (one of 'created', 'edited',
      *      'deleted', 'closed', 'reopened', 'error', 'collab', 'resent',
-     *      'assigned', 'transferred')
+     *      'assigned', 'released', 'transferred')
      * $data - (array?) Details about the state change
      * $user - (string|User|Staff) user triggering the state change
      * $annul - (state) a corresponding state change that is annulled by
@@ -2094,11 +2167,14 @@ class ThreadEvents extends InstrumentedList {
     function log($object, $state, $data=null, $user=null, $annul=null) {
         global $thisstaff, $thisclient;
 
-        if ($object instanceof Ticket)
+        if ($object && ($object instanceof Ticket))
             // TODO: Use $object->createEvent() (nolint)
             $event = ThreadEvent::forTicket($object, $state, $user);
-        elseif ($object instanceof Task)
+        elseif ($object && ($object instanceof Task))
             $event = ThreadEvent::forTask($object, $state, $user);
+
+        if (is_null($event))
+            return;
 
         # Annul previous entries if requested (for instance, reopening a
         # ticket will annul an 'closed' entry). This will be useful to
@@ -2115,8 +2191,8 @@ class ThreadEvents extends InstrumentedList {
             }
             // XXX: Use $user here
             elseif ($thisclient) {
-                if ($thisclient->hasAccount)
-                    $username = $thisclient->getAccount()->getUserName();
+                if ($thisclient->hasAccount())
+                    $username = $thisclient->getFullName();
                 if (!$username)
                     $username = $thisclient->getEmail();
             }
@@ -2126,7 +2202,7 @@ class ThreadEvents extends InstrumentedList {
             }
         }
         $event->username = $username;
-        $event->state = $state;
+        $event->event_id = Event::getIdByName($state);
 
         if ($data) {
             if (is_array($data))
@@ -2162,6 +2238,30 @@ class AssignmentEvent extends ThreadEvent {
             break;
         case isset($data['claim']):
             $desc = __('<b>{somebody}</b> claimed this {timestamp}');
+            break;
+        }
+        return $this->template($desc);
+    }
+}
+
+class ReleaseEvent extends ThreadEvent {
+    static $icon = 'unlock';
+    static $state = 'released';
+
+    function getDescription($mode=self::MODE_STAFF) {
+        $data = $this->getData();
+        switch (true) {
+        case isset($data['staff'], $data['team']):
+            $desc = __('Ticket released from <strong>{<Team>data.team}</strong> and <strong>{<Staff>data.staff}</strong> by <b>{somebody}</b> {timestamp}');
+            break;
+        case isset($data['staff']):
+            $desc = __('Ticket released from <strong>{<Staff>data.staff}</strong> by <b>{somebody}</b> {timestamp}');
+            break;
+        case isset($data['team']):
+            $desc = __('Ticket released from <strong>{<Team>data.team}</strong> by <b>{somebody}</b> {timestamp}');
+            break;
+        default:
+            $desc = __('<b>{somebody}</b> released ticket assignment {timestamp}');
             break;
         }
         return $this->template($desc);
@@ -2227,7 +2327,7 @@ class CollaboratorEvent extends ThreadEvent {
             }
             $desc = sprintf($base, implode(', ', $collabs));
             break;
-        case isset($data['add']) && $mode!=self::MODE_CLIENT:
+        case isset($data['add']):
             $base = __('<b>{somebody}</b> added <strong>%s</strong> as collaborators {timestamp}');
             $collabs = array();
             if ($data['add']) {
@@ -2288,8 +2388,9 @@ class EditEvent extends ThreadEvent {
                 $fields[$F->id] = $F;
             }
             foreach ($data['fields'] as $id=>$f) {
-                $field = $fields[$id];
-                if ($mode == self::MODE_CLIENT && !$field->isVisibleToUsers())
+                if (!($field = $fields[$id]))
+                   continue;
+                if ($mode == self::MODE_CLIENT &&  !$field->isVisibleToUsers())
                     continue;
                 list($old, $new) = $f;
                 $impl = $field->getImpl($field);
@@ -2536,7 +2637,7 @@ class TextThreadEntryBody extends ThreadEntryBody {
     }
 
     function getClean() {
-        return  Format::stripEmptyLines(parent::getClean());
+        return Format::htmlchars(Format::html_balance(Format::stripEmptyLines(parent::getClean())));
     }
 
     function prepend($what) {
@@ -2868,10 +2969,12 @@ implements TemplateVariable {
     }
 
     function addResponse($vars, &$errors) {
-
         $vars['threadId'] = $this->getId();
         $vars['userId'] = 0;
-        $vars['pid'] = $this->getLastMessage()->id;
+        if ($message = $this->getLastMessage())
+            $vars['pid'] = $message->getId();
+
+        $vars['flags'] = 0;
 
         if (!($resp = ResponseThreadEntry::add($vars, $errors)))
             return $resp;
@@ -2879,6 +2982,14 @@ implements TemplateVariable {
         $this->lastresponse = SqlFunction::NOW();
         $this->save(true);
         return $resp;
+    }
+
+    function __toString() {
+        return $this->asVar();
+    }
+
+    function asVar() {
+        return new ThreadEntries($this);
     }
 
     function getVar($name) {
@@ -2901,11 +3012,15 @@ implements TemplateVariable {
                 return $entry->getBody();
 
             break;
+        case 'complete':
+            return $this->asVar();
+            break;
         }
     }
 
     static function getVarScope() {
       return array(
+        'complete' =>array('class' => 'ThreadEntries', 'desc' => __('Thread Correspondence')),
         'original' => array('class' => 'MessageThreadEntry', 'desc' => __('Original Message')),
         'lastmessage' => array('class' => 'MessageThreadEntry', 'desc' => __('Last Message')),
       );
@@ -2922,6 +3037,47 @@ implements TemplateVariable {
             $class = get_called_class();
 
         return $class::lookup($criteria);
+    }
+}
+
+class ThreadEntries {
+    var $thread;
+
+    function __construct($thread) {
+        $this->thread = $thread;
+    }
+
+    function __tostring() {
+        return (string) $this->getVar();
+    }
+
+    function asVar() {
+        return $this->getVar();
+    }
+
+    function getVar($name='') {
+
+        $order = '';
+        switch ($name) {
+        case 'reversed':
+            $order = '-';
+        default:
+            $content = '';
+            $thread = $this->thread;
+            ob_start();
+            include INCLUDE_DIR.'client/templates/thread-export.tmpl.php';
+            $content = ob_get_contents();
+            ob_end_clean();
+            return $content;
+            break;
+        }
+    }
+
+    static function getVarScope() {
+      return array(
+        'reversed' => sprintf('%s %s', __('Thread Correspondence'),
+            __('in reversed order')),
+      );
     }
 }
 
@@ -3007,8 +3163,9 @@ abstract class ThreadEntryAction {
      *      `#` in the url
      */
     function getAjaxUrl($dialog=false) {
-        return sprintf('%stickets/%d/thread/%d/%s',
+        return sprintf('%s%s/%d/thread/%d/%s',
             $dialog ? '#' : 'ajax.php/',
+            $this->entry->getThread()->getObjectType() == 'T' ? 'tickets' : 'tasks',
             $this->entry->getThread()->getObjectId(),
             $this->entry->getId(),
             static::getId()
@@ -3017,6 +3174,10 @@ abstract class ThreadEntryAction {
 
     function getTicketsAPI() {
         return new TicketsAjaxAPI();
+    }
+
+    function getTasksAPI() {
+        return new TasksAjaxAPI();
     }
 }
 

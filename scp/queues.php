@@ -42,10 +42,9 @@ if ($_POST) {
 
     case 'create':
         $queue = CustomQueue::create(array(
-            'flags' => CustomQueue::FLAG_PUBLIC,
             'staff_id' => 0,
             'title' => $_POST['queue-name'],
-            'root' => $_POST['root'] ?: 'T'
+            'root' => 'T'
         ));
 
         if ($queue->update($_POST, $errors) && $queue->save(true)) {
@@ -73,11 +72,13 @@ if ($_POST) {
                 if ($queue->save()) $updated++;
                 break;
             case 'delete':
-                if ($queue->delete()) $updated++;
+                if ($queue->getId() == $cfg->getDefaultTicketQueueId())
+                    $err = __('This queue is the default queue. Unable to delete. ');
+                elseif ($queue->delete()) $updated++;
             }
         }
         if (!$updated) {
-            Messages::error(__(
+            Messages::error($err ?: __(
                 'Unable to manage any of the selected queues'));
         }
         elseif ($_POST['count'] && $updated != $_POST['count']) {

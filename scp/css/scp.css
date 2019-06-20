@@ -1588,27 +1588,6 @@ img.avatar {
     position: relative;
 }
 
-.thread-entry.bccmessage .header {
-    background:#DDFDAC;
-}
-
-.thread-entry.avatar.bccmessage .header:before {
-    top: 7px;
-    left: -8px;
-    right: initial;
-    border-left: none;
-    border-right: 8px solid #CCC;
-}
-
-.thread-entry.avatar.bccmessage .header:after {
-    top: 7px;
-    left: -8px;
-    right: initial;
-    border-left: none;
-    border-right: 7px solid #DDFDAC;
-    margin-left: 1px;
-}
-
 .thread-entry.message .header {
     background:#C3D9FF;
 }
@@ -1870,6 +1849,7 @@ ul.tabs.vertical li a {
 }
 
 ul.tabs.alt {
+  height: auto;
   background-color:initial;
   border-bottom:2px solid #ccc;
   border-bottom-color: rgba(0,0,0,0.1);
@@ -3546,6 +3526,12 @@ table.grid.form caption {
   margin-bottom: 5px;
 }
 
+.grid.form .field > .field-hint-text {
+  font-style: italic;
+  margin: 0 10px 5px 10px;
+  opacity: 0.8;
+}
+
 #basic_search {
   background-color: #f4f4f4;
   margin: -10px 0;
@@ -3657,3 +3643,17 @@ img.avatar + img.avatar {
  * Fixes a rendering issue on Safari
  */
 .select2-search__field{-webkit-appearance: textfield;}
+/* Fixes Select2 placeholder bug where
+ * placeholder is cutoff.
+ */
+.select2-selection__rendered, .select2-search,
+.select2-search__field:not([placeholder='']){width: 100% !important;}
+/* Fix Canned Responses Select2 Height */
+#resp_sec .select2-results, #resp_sec .select2-results__choices {
+    height: auto;
+    max-height: 400px !important;
+}
+#select2-cannedResp-results {
+    height: auto;
+    max-height: 400px !important;
+}

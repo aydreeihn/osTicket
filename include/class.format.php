@@ -308,8 +308,9 @@ class Format {
                   ':<html[^>]+:i',              # drop html attributes
                   ':<(a|span) (name|style)="(mso-bookmark\:)?_MailEndCompose">(.+)?<\/(a|span)>:', # Drop _MailEndCompose
                   ':<div dir=(3D)?"ltr">(.*?)<\/div>(.*):is', # drop Gmail "ltr" attributes
+                  ':data-cid="[^"]*":',         # drop image cid attributes
             ),
-            array('', '', '', '', '<html', '$4', '$2 $3'),
+            array('', '', '', '', '<html', '$4', '$2 $3', ''),
             $html);
 
         // HtmLawed specific config only
@@ -350,8 +351,13 @@ class Format {
     function htmlchars($var, $sanitize = false) {
         static $phpversion = null;
 
-        if (is_array($var))
-            return array_map(array('Format', 'htmlchars'), $var);
+        if (is_array($var)) {
+            $result = array();
+            foreach ($var as $k => $v)
+                $result[$k] = self::htmlchars($v, $sanitize);
+
+            return $result;
+        }
 
         if ($sanitize)
             $var = Format::sanitize($var);
@@ -416,6 +422,33 @@ class Format {
             return array_map(array('Format','striptags'), $var, array_fill(0, count($var), $decode));
 
         return strip_tags($decode?Format::htmldecode($var):$var);
+    }
+
+    // Strip all Emoticon/Emoji characters until we support them
+    function strip_emoticons($text) {
+        return preg_replace(array(
+                '/[\x{1F601}-\x{1F64F}]/u', # Emoticons
+                '/[\x{1F680}-\x{1F6C0}]/u', # Transport/Map
+                '/[\x{1F600}-\x{1F636}]/u', # Add. Emoticons
+                '/[\x{1F681}-\x{1F6C5}]/u', # Add. Transport/Map
+                '/[\x{1F30D}-\x{1F567}]/u', # Other
+                '/[\x{1F910}-\x{1F999}]/u', # Hands
+                '/[\x{1F9D0}-\x{1F9DF}]/u', # Fantasy
+                '/[\x{1F9E0}-\x{1F9EF}]/u', # Clothes
+                '/[\x{1F6F0}-\x{1F6FF}]/u', # Misc. Transport
+                '/[\x{1F6E0}-\x{1F6EF}]/u', # Planes/Boats
+                '/[\x{1F6C0}-\x{1F6CF}]/u', # Bed/Bath
+                '/[\x{1F9C0}-\x{1F9C2}]/u', # Misc. Food
+                '/[\x{1F6D0}-\x{1F6D2}]/u', # Sign/P.O.W./Cart
+                '/[\x{1F500}-\x{1F5FF}]/u', # Uncategorized
+                '/[\x{1F300}-\x{1F3FF}]/u', # Cyclone/Amphora
+                '/[\x{2702}-\x{27B0}]/u',   # Dingbats
+                '/[\x{00A9}-\x{00AE}]/u',   # Copyright/Registered
+                '/[\x{23F0}-\x{23FF}]/u',   # Clock/Buttons
+                '/[\x{23E0}-\x{23EF}]/u',   # More Buttons
+                '/[\x{2310}-\x{231F}]/u',   # Hourglass/Watch
+                '/[\x{2322}-\x{232F}]/u'    # Keyboard
+            ), '', $text);
     }
 
     //make urls clickable. Mainly for display
@@ -497,6 +530,22 @@ class Format {
         return implode( $separator, $string );
     }
 
+    function number($number, $locale=false) {
+        if (is_array($number))
+            return array_map(array('Format','number'), $number);
+
+        if (!is_numeric($number))
+            return $number;
+
+        if (extension_loaded('intl') && class_exists('NumberFormatter')) {
+            $nf = NumberFormatter::create($locale ?: Internationalization::getCurrentLocale(),
+                NumberFormatter::DECIMAL);
+            return $nf->format($number);
+        }
+
+        return number_format((int) $number);
+    }
+
     /* elapsed time */
     function elapsedTime($sec) {
 
@@ -523,6 +572,10 @@ class Format {
         // Make sure timestamp is valid for realz.
         if (!$timestamp || !($datetime = DateTime::createFromFormat('U', $timestamp)))
             return '';
+
+        // Normalize timezone
+        if ($timezone)
+            $timezone = Format::timezone($timezone);
 
         // Set the desired timezone (caching since it will be mostly same
         // for most date formatting.
@@ -661,20 +714,20 @@ class Format {
             '%x', $timezone ?: $cfg->getTimezone(), $user);
     }
 
-    function datetime($timestamp, $fromDb=true, $timezone=false, $user=false) {
+    function datetime($timestamp, $fromDb=true, $format=false,  $timezone=false, $user=false) {
         global $cfg;
 
         return self::__formatDate($timestamp,
-                $cfg->getDateTimeFormat(), $fromDb,
+                $format ?: $cfg->getDateTimeFormat(), $fromDb,
                 IDF_SHORT, IDF_SHORT,
                 '%x %X', $timezone ?: $cfg->getTimezone(), $user);
     }
 
-    function daydatetime($timestamp, $fromDb=true, $timezone=false, $user=false) {
+    function daydatetime($timestamp, $fromDb=true, $format=false,  $timezone=false, $user=false) {
         global $cfg;
 
         return self::__formatDate($timestamp,
-                $cfg->getDayDateTimeFormat(), $fromDb,
+                $format ?: $cfg->getDayDateTimeFormat(), $fromDb,
                 IDF_FULL, IDF_SHORT,
                 '%x %X', $timezone ?: $cfg->getTimezone(), $user);
     }
@@ -902,17 +955,10 @@ class Format {
           return sprintf($timeDiff >= 0 ? __('%d hours ago') : __('in %d hours'), $absTimeDiff / 3600);
         }
 
-        // within 2 days
-        $days2 = 2 * 86400;
-        if ($absTimeDiff < $days2) {
-            // XXX: yesterday / tomorrow?
-          return $absTimeDiff >= 0 ? __('yesterday') : __('tomorrow');
-        }
-
         // within 29 days
         $days29 = 29 * 86400;
         if ($absTimeDiff < $days29) {
-          return sprintf($timeDiff >= 0 ? __('%d days ago') : __('in %d days'), $absTimeDiff / 86400);
+          return sprintf($timeDiff >= 0 ? __('%d days ago') : __('in %d days'), round($absTimeDiff / 86400));
         }
 
         // within 60 days
@@ -1002,11 +1048,11 @@ implements TemplateVariable {
         case 'short':
             return Format::date($this->date, $this->fromdb, false, $this->timezone, $this->user);
         case 'long':
-            return Format::datetime($this->date, $this->fromdb, $this->timezone, $this->user);
+            return Format::datetime($this->date, $this->fromdb, false, $this->timezone, $this->user);
         case 'time':
             return Format::time($this->date, $this->fromdb, false, $this->timezone, $this->user);
         case 'full':
-            return Format::daydatetime($this->date, $this->fromdb, $this->timezone, $this->user);
+            return Format::daydatetime($this->date, $this->fromdb, false, $this->timezone, $this->user);
         }
     }
 
