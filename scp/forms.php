@@ -108,14 +108,21 @@ if($_POST) {
         for ($i=0; isset($_POST["sort-new-$i"]); $i++) {
             if (!$_POST["label-new-$i"])
                 continue;
+            $type = $_POST["type-new-$i"];
             $field = DynamicFormField::create(array(
                 'sort'=>$_POST["sort-new-$i"] ? $_POST["sort-new-$i"] : ++$max_sort,
                 'label'=>$_POST["label-new-$i"],
-                'type'=>$_POST["type-new-$i"],
+                'type'=>$type,
                 'name'=>trim($_POST["name-new-$i"]),
             ));
             $field->setRequirementMode($_POST["visibility-new-$i"]);
             $form->fields->add($field);
+            if ($type == 'user') {
+                $field->setFlag(DynamicFormField::FLAG_MASK_EDIT, true);
+                $field->setFlag(DynamicFormField::FLAG_CLIENT_EDIT, false);
+                $field->setFlag(DynamicFormField::FLAG_CLIENT_VIEW, false);
+            }
+
             if (in_array($field->get('name'), $names))
                 $field->addError(__('Field variable name is not unique'), 'name');
             if ($field->isValid()) {

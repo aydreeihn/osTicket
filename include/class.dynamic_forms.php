@@ -693,6 +693,13 @@ class DynamicFormField extends VerySimpleModel {
         return (isset($this->flags) && ($this->flags & $flag) != 0);
     }
 
+    public function setFlag($flag, $val) {
+        if ($val)
+            $this->flags |= $flag;
+        else
+            $this->flags &= ~$flag;
+    }
+
     /**
      * Describes the current visibility settings for this field. Returns a
      * comma-separated, localized list of flag descriptions.

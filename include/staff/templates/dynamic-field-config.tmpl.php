@@ -37,6 +37,7 @@
         <input type="checkbox" name="flags[]" value="<?php
             echo DynamicFormField::FLAG_CLIENT_VIEW; ?>" <?php
             if ($field->hasFlag(DynamicFormField::FLAG_CLIENT_VIEW)) echo 'checked="checked"';
+            if ($field->hasFlag(DynamicFormField::FLAG_MASK_EDIT)) echo ' disabled="disabled"';
             if ($field->isPrivacyForced()) echo ' disabled="disabled"';
         ?>> <?php echo __('For EndUsers'); ?><br/>
     </div>
@@ -61,6 +62,7 @@
     <div class="span3">
         <input type="checkbox" name="flags[]" value="<?php
             echo DynamicFormField::FLAG_CLIENT_REQUIRED; ?>" <?php
+            if ($field->hasFlag(DynamicFormField::FLAG_MASK_EDIT)) echo ' disabled="disabled"';
             if ($field->hasFlag(DynamicFormField::FLAG_CLIENT_REQUIRED)) echo 'checked="checked"';
             if ($field->isRequirementForced()) echo ' disabled="disabled"';
         ?>> <?php echo __('For EndUsers'); ?><br/>
@@ -85,6 +87,7 @@
     <div class="span3">
         <input type="checkbox" name="flags[]" value="<?php
             echo DynamicFormField::FLAG_CLIENT_EDIT; ?>" <?php
+            if ($field->hasFlag(DynamicFormField::FLAG_MASK_EDIT)) echo ' disabled="disabled"';
             if ($field->hasFlag(DynamicFormField::FLAG_CLIENT_EDIT)) echo 'checked="checked"';
         ?>> <?php echo __('For EndUsers'); ?><br/>
     </div>
