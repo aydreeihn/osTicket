@@ -156,7 +156,7 @@ class Sequence extends VerySimpleModel {
 
         // Lock the database object -- this is important to handle concurrent
         // requests for new numbers
-        static::objects()->filter(array('id'=>$this->id))->lock()->one();
+        static::objects()->filter(array('next'=>$this->next))->lock()->one();
 
         // Increment the counter
         $next = $this->next;
