@@ -3467,14 +3467,13 @@ implements RestrictedAccess, Threadable, Searchable {
         //deleting child ticket
         if ($this->isChild()) {
             $parent = Ticket::lookup($this->ticket_pid);
-            if ($parent->isParent() && count($parent->getChildTickets($parent->getId())) == 0) {
+            if ($parent->isParent() && count($parent->getChildren()) == 0) {
                 $parent->setMergeType(3);
                 $parent->save();
             }
-        }
+        } else
+            $t->delete();
 
-
-        $t->delete();
         $this->logEvent('deleted');
 
         foreach (DynamicFormEntry::forTicket($this->getId()) as $form)
