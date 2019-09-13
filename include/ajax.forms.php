@@ -400,10 +400,10 @@ class DynamicFormsAjaxAPI extends AjaxController {
         );
     }
 
-    function getAllFields($id) {
+    function getAllFields($id, $api=false) {
         global $thisstaff;
 
-        if (!$thisstaff)
+        if (!$thisstaff && !$api)
             Http::response(403, 'Login required');
         elseif (!$form = DynamicForm::lookup($id))
             Http::response(400, 'No such form');

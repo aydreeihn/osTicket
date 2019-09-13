@@ -21,11 +21,15 @@ require 'api.inc.php';
 
 # Include the main api urls
 require_once INCLUDE_DIR."class.dispatcher.php";
+require_once INCLUDE_DIR."class.ajax.php";
 
 $dispatcher = patterns('',
         url_post("^/tickets\.(?P<format>xml|json|email)$", array('api.tickets.php:TicketApiController','create')),
         url('^/tasks/', patterns('',
                 url_post("^cron$", array('api.cron.php:CronApiController', 'execute'))
+         )),
+         url('^/form/', patterns('',
+             url_get('^(?P<id>\d+)/(?P<api>\w+)/fields/view$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getAllFields'))
          ))
         );
 
