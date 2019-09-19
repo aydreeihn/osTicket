@@ -14,8 +14,8 @@ class DynamicFormsAjaxAPI extends AjaxController {
         }
     }
 
-    function getFormsForHelpTopic($topic_id, $client=false) {
-        if (!$_SERVER['HTTP_REFERER'])
+    function getFormsForHelpTopic($topic_id, $client=false, $api=false) {
+        if (!$_SERVER['HTTP_REFERER'] && !$api)
             Http::response(403, 'Forbidden.');
 
         if (!($topic = Topic::lookup($topic_id)))
@@ -46,8 +46,8 @@ class DynamicFormsAjaxAPI extends AjaxController {
         ));
     }
 
-    function getClientFormsForHelpTopic($topic_id) {
-        return $this->getFormsForHelpTopic($topic_id, true);
+    function getClientFormsForHelpTopic($topic_id, $api=false) {
+        return $this->getFormsForHelpTopic($topic_id, true, $api);
     }
 
     function getFieldConfiguration($field_id) {

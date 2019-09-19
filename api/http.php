@@ -29,8 +29,12 @@ $dispatcher = patterns('',
                 url_post("^cron$", array('api.cron.php:CronApiController', 'execute'))
          )),
          url('^/form/', patterns('',
-             url_get('^(?P<id>\d+)/(?P<api>\w+)/fields/view$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getAllFields'))
-         ))
+            url_get('^(?P<id>\d+)/(?P<api>\w+)/fields/view$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getAllFields')),
+            url_get('^help-topic/(?P<id>\d+)/(?P<api>\w+)$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getClientFormsForHelpTopic'))
+          )),
+          url('^/topic/', patterns('',
+             url_get('^topics$', array('ajax.topics.php:TopicsAjaxAPI', 'getHelpTopics'))
+          ))
         );
 
 Signal::send('api', $dispatcher);
