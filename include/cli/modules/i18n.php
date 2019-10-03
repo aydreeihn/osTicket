@@ -1,5 +1,7 @@
 <?php
-
+use Aws\Common\Enum\Region;
+use Aws\Common\Aws;
+require_once 'vendor/autoload.php';
 require_once INCLUDE_DIR . 'class.format.php';
 
 class i18n_Compiler extends Module {
@@ -163,6 +165,18 @@ class i18n_Compiler extends Module {
         fclose($f);
         $zip = new ZipArchive();
         $zip->open($temp);
+
+        //aws s3 connection
+        $aws = Aws::factory(I18N_DIR . '/aws-config.php');
+        $s3Client = $aws->get('s3');
+
+        // Upload an object to Amazon S3
+        $result = $s3Client->putObject(array(
+            'Bucket' => 'downloads.osticket.com',
+            'Key'    => '/lang/1.12.x/'."$lang.phar",
+            'Body'   => fopen($temp, 'r+'),
+            'ACL'    => 'public-read'
+        ));
         unlink($temp);
 
         $lang = str_replace('-','_',$lang);
