@@ -216,7 +216,7 @@ class AdminAjaxAPI extends AjaxController {
 
     }
 
-    function addQueueSort($root='Ticket') {
+    function addQueueSort($root = array('root' => 'Ticket')) {
         global $ost, $thisstaff;
 
         if (!$thisstaff)
@@ -228,7 +228,7 @@ class AdminAjaxAPI extends AjaxController {
         if ($_POST) {
             $data_form = $sort->getDataConfigForm($_POST);
             if ($data_form->isValid()) {
-                $sort->update($data_form->getClean() + $_POST, $root);
+                $sort->update($data_form->getClean() + $_POST + $root);
                 if ($sort->save())
                     Http::response(201, $this->encode(array(
                         'id' => $sort->getId(),

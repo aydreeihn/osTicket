@@ -2835,10 +2835,12 @@ extends VerySimpleModel {
     function getColumnPaths() {
         if (!isset($this->_columns)) {
             $columns = array();
-            foreach (JsonDataParser::decode($this->columns) as $path) {
-                if ($descending = $path[0] == '-')
-                    $path = substr($path, 1);
-                $columns[$path] = $descending;
+            if ($this->columns) {
+                foreach (JsonDataParser::decode($this->columns) as $path) {
+                    if ($descending = $path[0] == '-')
+                        $path = substr($path, 1);
+                    $columns[$path] = $descending;
+                }
             }
             $this->_columns = $columns;
         }
