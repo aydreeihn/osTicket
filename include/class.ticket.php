@@ -553,6 +553,17 @@ implements RestrictedAccess, Threadable, Searchable {
             $this->clearOverdue(false);
 
         $this->est_duedate = $this->getSLADueDate(true) ?: null;
+        $DueDate = $this->getEstDueDate();
+        $this->est_duedate = $this->getSLADueDate(true) ?: null;
+        // Clear overdue flag if duedate or SLA changes and the ticket is no longer overdue.
+        $DueDate = $this->getEstDueDate();
+        if ($this->isOverdue()
+            && $clearOverdue
+            && (!$DueDate // Duedate + SLA cleared
+                || Misc::db2gmtime($DueDate) > Misc::gmtime() //New due date in the future.
+        )) {
+             $this->isoverdue = 0;
+        }
 
         return $this->save();
     }
@@ -3825,12 +3836,11 @@ implements RestrictedAccess, Threadable, Searchable {
 
        $this->lastupdate = SqlFunction::NOW();
 
-       if ($updateDuedate)
-           $this->updateEstDueDate();
+        $this->save();
+        if ($updateDuedate)
+            $this->updateEstDueDate();
 
-       $this->save();
-
-       Signal::send('model.updated', $this);
+        Signal::send('model.updated', $this);
 
        return true;
    }
