@@ -2573,6 +2573,9 @@ implements RestrictedAccess, Threadable, Searchable {
                 if ($options['parentStatusId'])
                     $parent->setStatus(intval($options['parentStatusId']));
 
+                if ($options['parentStatusId'])
+                    $parent->setStatus(intval($options['parentStatusId']));
+
                 if ($options['delete-child'] || $options['move-tasks']) {
                     if ($tasks = Task::objects()
                         ->filter(array('object_id' => $child->getId()))
