@@ -1,0 +1,16 @@
+{
+    "name": "aydreeihn/osticket",
+    "type": "library",
+    "homepage": "https://github.com/aydreeihn/osTicket",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Adriane Alexander",
+            "email": "adriane@enhancesoft.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.0.0"
+    }
+}
