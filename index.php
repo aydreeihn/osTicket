@@ -1,82 +1,60 @@
 <?php
-/*********************************************************************
-    index.php
 
-    Helpdesk landing page. Please customize it to fit your needs.
+/**
+ * Laravel - A PHP Framework For Web Artisans
+ *
+ * @package  Laravel
+ * @author   Taylor Otwell <taylor@laravel.com>
+ */
 
-    Peter Rotich <peter@osticket.com>
-    Copyright (c)  2006-2013 osTicket
-    http://www.osticket.com
+define('LARAVEL_START', microtime(true));
 
-    Released under the GNU General Public License WITHOUT ANY WARRANTY.
-    See LICENSE.TXT for details.
+/*
+|--------------------------------------------------------------------------
+| Register The Auto Loader
+|--------------------------------------------------------------------------
+|
+| Composer provides a convenient, automatically generated class loader for
+| our application. We just need to utilize it! We'll simply require it
+| into the script here so that we don't have to worry about manual
+| loading any of our classes later on. It feels great to relax.
+|
+*/
 
-    vim: expandtab sw=4 ts=4 sts=4:
-**********************************************************************/
-require('client.inc.php');
+require __DIR__.'/vendor/autoload.php';
 
-require_once INCLUDE_DIR . 'class.page.php';
+/*
+|--------------------------------------------------------------------------
+| Turn On The Lights
+|--------------------------------------------------------------------------
+|
+| We need to illuminate PHP development, so let us turn on the lights.
+| This bootstraps the framework and gets it ready for use, then it
+| will load up this application so that we can run it and send
+| the responses back to the browser and delight our users.
+|
+*/
 
-$section = 'home';
-require(CLIENTINC_DIR.'header.inc.php');
-?>
-<div id="landing_page">
-<?php include CLIENTINC_DIR.'templates/sidebar.tmpl.php'; ?>
-<div class="main-content">
-<?php
-if ($cfg && $cfg->isKnowledgebaseEnabled()) { ?>
-<div class="search-form">
-    <form method="get" action="kb/faq.php">
-    <input type="hidden" name="a" value="search"/>
-    <input type="text" name="q" class="search" placeholder="<?php echo __('Search our knowledge base'); ?>"/>
-    <button type="submit" class="green button"><?php echo __('Search'); ?></button>
-    </form>
-</div>
-    <div class="thread-body">
-<?php
-}
-    if($cfg && ($page = $cfg->getLandingPage()))
-        echo $page->getBodyWithImages();
-    else
-        echo  '<h1>'.__('Welcome to the Support Center').'</h1>';
-    ?>
-    </div>
-</div>
-<div class="clear"></div>
+$app = require_once __DIR__.'/bootstrap/app.php';
 
-<div>
-<?php
-if($cfg && $cfg->isKnowledgebaseEnabled()){
-    //FIXME: provide ability to feature or select random FAQs ??
-?>
-<br/><br/>
-<?php
-$cats = Category::getFeatured();
-if ($cats->all()) { ?>
-<h1><?php echo __('Featured Knowledge Base Articles'); ?></h1>
-<?php
-}
+/*
+|--------------------------------------------------------------------------
+| Run The Application
+|--------------------------------------------------------------------------
+|
+| Once we have the application, we can handle the incoming request
+| through the kernel, and send the associated response back to
+| the client's browser allowing them to enjoy the creative
+| and wonderful application we have prepared for them.
+|
+*/
 
-    foreach ($cats as $C) { ?>
-    <div class="featured-category front-page">
-        <i class="icon-folder-open icon-2x"></i>
-        <div class="category-name">
-            <?php echo $C->getName(); ?>
-        </div>
-<?php foreach ($C->getTopArticles() as $F) { ?>
-        <div class="article-headline">
-            <div class="article-title"><a href="<?php echo ROOT_PATH;
-                ?>kb/faq.php?id=<?php echo $F->getId(); ?>"><?php
-                echo $F->getQuestion(); ?></a></div>
-            <div class="article-teaser"><?php echo $F->getTeaser(); ?></div>
-        </div>
-<?php } ?>
-    </div>
-<?php
-    }
-}
-?>
-</div>
-</div>
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
-<?php require(CLIENTINC_DIR.'footer.inc.php'); ?>
+$response = $kernel->handle(
+    $request = Illuminate\Http\Request::capture()
+);
+
+$response->send();
+
+$kernel->terminate($request, $response);

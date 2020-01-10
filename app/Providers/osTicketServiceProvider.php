@@ -9,12 +9,13 @@ class osTicketServiceProvider extends ServiceProvider{
    public function register() {
       $this->app->singleton("osTicket",function($app){
 
-         // here are the contents of the legacy index.php:
-         require_once “index.php”;
+         // Define path to application directory
+         defined('APPLICATION_PATH')
+             || define('APPLICATION_PATH', realpath( __DIR__ . '/../../application'));
          $bootstrap = new Bootstrap(
             $app->environment(), $this->createOptions()
          );
-var_dump('hit');
+
          return $bootstrap->init();
       });
    }
