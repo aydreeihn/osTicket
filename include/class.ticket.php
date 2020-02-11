@@ -2567,11 +2567,8 @@ implements RestrictedAccess, Threadable, Searchable {
                 if ($child->getThread())
                     $child->getThread()->setExtra($parentThread);
 
-                $child->setMergeType($options['combine']);
+                $$child->setMergeType($options['combine']);
                 $child->setStatus(intval($options['childStatusId']), false, $errors, true, true); //force close status for children
-
-                if ($options['parentStatusId'])
-                    $parent->setStatus(intval($options['parentStatusId']));
 
                 if ($options['parentStatusId'])
                     $parent->setStatus(intval($options['parentStatusId']));
