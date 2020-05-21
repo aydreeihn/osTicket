@@ -51,7 +51,7 @@ $isCreate = (isset($options['mode']) && $options['mode'] == 'create');
             <?php
             }
             if ($field->isEditableToUsers() || $isCreate) {
-                $field->render(array('client'=>true));
+                $field->render(array('client'=>true, 'api'=>'api'));
                 ?></label><?php
                 foreach ($field->errors() as $e) { ?>
                     <div class="error"><?php echo $e; ?></div>

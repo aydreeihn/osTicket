@@ -1474,7 +1474,7 @@ class SelectionField extends FormField {
         return $this->_list;
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $config = $this->getConfiguration();
         if ($config['widget'] == 'typeahead' && $config['multiselect'] == false)
             $widgetClass = 'TypeaheadSelectionWidget';

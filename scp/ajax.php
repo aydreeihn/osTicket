@@ -16,9 +16,11 @@
 # Override staffLoginPage() defined in staff.inc.php to return an
 # HTTP/Forbidden status rather than the actual login page.
 # XXX: This should be moved to the AjaxController class
-function staffLoginPage($msg='Unauthorized') {
-    Http::response(403,'Must login: '.Format::htmlchars($msg));
-    exit;
+function staffLoginPage($msg='Unauthorized', $api=true) {
+    if (!$api) {
+        Http::response(403,'Must login: '.Format::htmlchars($msg));
+        exit;
+    }
 }
 
 define('AJAX_REQUEST', 1);

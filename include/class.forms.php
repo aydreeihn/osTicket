@@ -81,7 +81,8 @@ class Form {
         foreach($fields as $f)
             if(!strcasecmp($f->get('name'), $name))
                 return $f;
-        if (isset($fields[$name]))
+
+        if (is_array($fields) && isset($fields[$name]))
             return $fields[$name];
     }
 
@@ -1184,7 +1185,7 @@ class FormField {
     }
 
     function render($options=array()) {
-        $rv = $this->getWidget()->render($options);
+        $rv = $this->getWidget(false, $options['api'])->render($options);
         if ($v = $this->get('visibility')) {
             $v->emitJavascript($this);
         }
@@ -1310,12 +1311,12 @@ class FormField {
         $this->_config[$prop] = $value;
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         if (!static::$widget)
             throw new Exception(__('Widget not defined for this field'));
         if (!isset($this->_widget)) {
             $wc = $widgetClass ?: $this->get('widget') ?: static::$widget;
-            $this->_widget = new $wc($this);
+            $this->_widget = new $wc($this, $api);
             $this->_widget->parseValue();
         }
         return $this->_widget;
@@ -2732,7 +2733,7 @@ class ThreadEntryField extends FormField {
         return $config['attachments'];
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         if ($hint = $this->getLocal('hint'))
             $this->set('placeholder', Format::striptags($hint));
         $this->set('hint', null);
@@ -2758,7 +2759,7 @@ class TopicField extends ChoiceField {
             return Topic::lookup($id);
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $default = $this->get('default');
         $widget = parent::getWidget($widgetClass);
         if ($widget->value instanceof Topic)
@@ -2864,7 +2865,7 @@ class SLAField extends ChoiceField {
         return SLA::lookup($id);
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $default = $this->get('default');
         $widget = parent::getWidget($widgetClass);
         if ($widget->value instanceof SLA)
@@ -2975,7 +2976,7 @@ class PriorityField extends ChoiceField {
         return Priority::lookup($id);
     }
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $widget = parent::getWidget($widgetClass);
         if ($widget->value instanceof Priority)
             $widget->value = $widget->value->getId();
@@ -3147,7 +3148,7 @@ class TimezoneField extends ChoiceField {
 
 
 class DepartmentField extends ChoiceField {
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $widget = $this->_widget ?: parent::getWidget($widgetClass);
         if (is_object($widget->value))
             $widget->value = $widget->value->getId();
@@ -3283,7 +3284,7 @@ class AssigneeField extends ChoiceField {
     var $_choices = null;
     var $_criteria = null;
 
-    function getWidget($widgetClass=false) {
+    function getWidget($widgetClass=false, $api=false) {
         $widget = parent::getWidget($widgetClass);
         if (is_object($widget->value))
             $widget->value = $widget->value->getId();
@@ -4090,9 +4091,9 @@ class InlineFormWidget extends Widget {
 class Widget {
     static $media = null;
 
-    function __construct($field) {
+    function __construct($field, $api=false) {
         $this->field = $field;
-        $this->name = $field->getFormName();
+        $this->name = $api ? $field->getLocal('name') : $field->getFormName();
         $this->id = '_' . $this->name;
     }
 
@@ -4891,11 +4892,16 @@ class ThreadEntryWidget extends Widget {
         if (!$config['attachments'])
             return;
 
+        $config['api'] = $options['api'];
         $attachments = $this->getAttachments($config);
         print $attachments->render($options);
         foreach ($attachments->getMedia() as $type=>$urls) {
-            foreach ($urls as $url)
+            foreach ($urls as $url) {
+                if ($options['api'])
+                    $url = '#';
                 Form::emitMedia($url, $type);
+            }
+
         }
     }
 
@@ -4939,6 +4945,9 @@ class FileUploadWidget extends Widget {
         $config = $this->field->getConfiguration();
         $name = $this->field->getFormName();
         $id = substr(md5(spl_object_hash($this)), 10);
+        $fieldName = $this->field->get('name');
+        $fieldName = ($options['api'] && ctype_alnum($fieldName))
+            ? sprintf('file-%s', $fieldName) : sprintf('file-%s', $id);
         $mimetypes = array_filter($config['__mimetypes'],
             function($t) { return strpos($t, '/') !== false; }
         );
@@ -4983,7 +4992,7 @@ class FileUploadWidget extends Widget {
                 __('Drop files here or %s choose them %s'),
                 '<a href="#" class="manual">', '</a>'); ?>
         <input type="file" multiple="multiple"
-            id="file-<?php echo $id; ?>" style="display:none;"
+            id="<?php echo $fieldName; ?>" style="display:none;"
             accept="<?php echo implode(',', $config['__mimetypes']); ?>"/>
         </div></div>
         <script type="text/javascript">
@@ -4991,7 +5000,7 @@ class FileUploadWidget extends Widget {
           url: 'ajax.php/form/upload/<?php echo $this->field->get('id') ?>',
           link: $('#<?php echo $id; ?>').find('a.manual'),
           paramname: 'upload[]',
-          fallback_id: 'file-<?php echo $id; ?>',
+          fallback_id: '<?php echo $fieldName; ?>',
           allowedfileextensions: <?php echo JsonDataEncoder::encode(
             $config['__extensions'] ?: array()); ?>,
           allowedfiletypes: <?php echo JsonDataEncoder::encode(

@@ -29,6 +29,8 @@ $dispatcher = patterns('',
                 url_post("^cron$", array('api.cron.php:CronApiController', 'execute'))
          )),
          url('^/form/', patterns('',
+            url_post('^upload/(\d+)?$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'upload')),
+            url_post('^upload/(\w+)?$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'attach')),
             url_get('^(?P<id>\d+)/(?P<api>\w+)/fields/view$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getAllFields')),
             url_get('^help-topic/(?P<id>\d+)/(?P<api>\w+)$', array('ajax.forms.php:DynamicFormsAjaxAPI', 'getClientFormsForHelpTopic'))
           )),

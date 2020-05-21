@@ -71,7 +71,6 @@ class TicketApiController extends ApiController {
         // form to validate the attachments in the email
         $tform = TicketForm::objects()->one()->getForm();
         $messageField = $tform->getField('message');
-        $fileField = $messageField->getWidget()->getAttachments();
 
         // Nuke attachments IF API files are not allowed.
         if (!$messageField->isAttachmentsEnabled())
@@ -79,24 +78,33 @@ class TicketApiController extends ApiController {
 
         //Validate attachments: Do error checking... soft fail - set the error and pass on the request.
         if ($data['attachments'] && is_array($data['attachments'])) {
-            foreach($data['attachments'] as &$file) {
+            foreach($data['attachments'] as $key => &$file) {
+                if (strpos($key, 'file-') !== false) {
+                    $newKey = str_replace('file-', '',$key);
+                    $fileField = $tform->getField($newKey);
+                }
                 if ($file['encoding'] && !strcasecmp($file['encoding'], 'base64')) {
                     if(!($file['data'] = base64_decode($file['data'], true)))
                         $file['error'] = sprintf(__('%s: Poorly encoded base64 data'),
                             Format::htmlchars($file['name']));
                 }
-                // Validate and save immediately
-                try {
-                    $F = $fileField->uploadAttachment($file);
-                    $file['id'] = $F->getId();
+
+                if ($fileField) {
+                    // Validate and save immediately
+                    try {
+                        $F = $fileField->uploadAttachment($file);
+                        $file['id'] = $F->getId();
+                        $data[$newKey][$F->getId()] = $file['name'];
+                    }
+                    catch (FileUploadError $ex) {
+                        $name = $file['name'];
+                        $file = array();
+                        $file['error'] = Format::htmlchars($name) . ': ' . $ex->getMessage();
+                    }
+                    unset($data['attachments'][$key]);
                 }
-                catch (FileUploadError $ex) {
-                    $name = $file['name'];
-                    $file = array();
-                    $file['error'] = Format::htmlchars($name) . ': ' . $ex->getMessage();
-                }
+                unset($file);
             }
-            unset($file);
         }
 
         return true;
