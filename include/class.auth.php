@@ -163,6 +163,7 @@ class ClientCreateRequest {
  */
 abstract class AuthenticationBackend {
     static protected $registry = array();
+    static protected $registry_2fa = array();
     static $name;
     static $id;
 
@@ -186,6 +187,25 @@ abstract class AuthenticationBackend {
 
     static function allRegistered() {
         return static::$registry;
+    }
+
+    static function register2fa($class) {
+        if (is_string($class) && class_exists($class))
+            $class = new $class();
+
+        if (!is_object($class)
+                || !($class instanceof AuthenticationBackend))
+            return false;
+
+        return static::_register2fa($class);
+    }
+
+    static function _register2fa($class) {
+        static::$registry_2fa[$class::$id] = $class;
+    }
+
+    static function allRegistered2fa() {
+        return static::$registry_2fa;
     }
 
     static function getBackend($id) {
@@ -442,6 +462,7 @@ interface ExternalAuthentication {
 abstract class StaffAuthenticationBackend  extends AuthenticationBackend {
 
     static private $_registry = array();
+    static private $_registry_2fa = array();
 
     static function _register($class) {
         static::$_registry[$class::$id] = $class;
@@ -449,6 +470,14 @@ abstract class StaffAuthenticationBackend  extends AuthenticationBackend {
 
     static function allRegistered() {
         return array_merge(self::$_registry, parent::allRegistered());
+    }
+
+    static function _register2fa($class) {
+        static::$_registry_2fa[$class::$id] = $class;
+    }
+
+    static function allRegistered2fa() {
+        return array_merge(self::$_registry_2fa, parent::allRegistered());
     }
 
     function isBackendAllowed($staff, $bk) {

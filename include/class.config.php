@@ -1381,6 +1381,18 @@ class OsticketConfig extends Config {
         ));
     }
 
+    function updateAgents($field, $old, $new) {
+        $agents = Staff::objects()
+            ->filter(array($field=>$old));
+
+        if ($agents) {
+            foreach ($agents as $agent) {
+                $agent->$field = $new;
+                $agent->save();
+            }
+        }
+    }
+
     function updateUsersSettings($vars, &$errors) {
         $f=array();
         $f['client_session_timeout']=array('type'=>'int',   'required'=>1, 'error'=>'Enter idle time in minutes');
