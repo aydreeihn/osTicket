@@ -221,16 +221,16 @@ class PluginManager {
         return $ht['name'];
     }
 
-    static function auditPlugin() {
-        return self::getPluginByName('Help Desk Audit', true);
-    }
-
     static function allActive() {
         $plugins = array();
         foreach (static::allInstalled() as $p)
             if ($p instanceof Plugin && $p->isActive())
                 $plugins[] = $p;
         return $plugins;
+    }
+
+    function pluginExists($name) {
+        return self::getPluginByName($name, true);
     }
 
     function throwException($errno, $errstr) {

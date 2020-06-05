@@ -163,7 +163,8 @@ if (count($bks) > 1) {
         </tr>
 <?php
 }
-if (Email2FA::registerEmail2FA()) {
+if (Email2FA::registerEmail2fa() || PluginManager::pluginExists('Google Authenticator 2FA')) {
+    Signal::send('agent.google2fa.register', $staff);
     $bks2fa = array();
 
     foreach (StaffAuthenticationBackend::allRegistered() as $ab) {
@@ -190,6 +191,7 @@ if (Email2FA::registerEmail2FA()) {
           </td>
         </tr>
     <?php
+    Signal::send('agent.account.auth', $staff);
     }
 } ?>
       </tbody>

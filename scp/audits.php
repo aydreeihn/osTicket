@@ -15,7 +15,7 @@
 **********************************************************************/
 require('admin.inc.php');
 
-if (PluginManager::auditPlugin())
+if (PluginManager::pluginExists('Help Desk Audit'))
     require_once('phar://' . INCLUDE_DIR . '/plugins/audit.phar/class.audit.php');
 
 $page = 'phar://' . INCLUDE_DIR . '/plugins/audit.phar/templates/auditlogs.tmpl.php';

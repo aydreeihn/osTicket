@@ -20,6 +20,14 @@ username:
         that is unique to your <span class="doc-desc-title">Help
         Desk</span>.
 
+google2fa:
+    title: Google 2FA
+    content: >
+        Use the Google Authenticator application on your phone to scan and
+        the QR Code below. Please note that if you turn off 2FA and switch back
+        to using it, you will need to rescan the QR Code. If you lose the QR Code
+        on the app, you can do a Password Reset to regain access to your account.
+
 email_address:
     title: Email Address
     content: >

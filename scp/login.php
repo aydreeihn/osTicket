@@ -73,6 +73,8 @@ if ($_POST && isset($_POST['userid'])) {
 
         if (!is_null($user->getBackend2fa()) && ($user->getBackend2fa() == 'Email2FA'))
             $dest = 'email2fa.php';
+        elseif (!is_null($user->backend2fa) && $user->backend2fa == 'google2fa')
+            $dest = 'google2fa.php';
 
         $redirect($dest);
     }

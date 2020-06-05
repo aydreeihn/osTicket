@@ -183,11 +183,11 @@ class StaffSession extends Staff {
         if(!$this->getId() || $this->session->getSessionId()!=session_id())
             return false;
 
-        if (($_SESSION['_staff']['email2fa'] && $_SESSION['_staff']['email2fa'] == 'false')){
+        if (($_SESSION['_staff']['email2fa'] && $_SESSION['_staff']['email2fa'] == 'false') ||
+           ($_SESSION['_staff']['google2fa'] && $_SESSION['_staff']['google2fa'] == 'false')){
             $_SESSION['_staff']['auth']['msg'] = '';
             return false;
         }
-
 
         return $this->session->isvalidSession($this->token,$cfg->getStaffTimeout(),$cfg->enableStaffIPBinding())?true:false;
     }

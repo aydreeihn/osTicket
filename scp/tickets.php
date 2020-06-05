@@ -527,7 +527,7 @@ if($ticket) {
     } elseif ($_GET['a'] == 'zip' && !$ticket->zipExport($_REQUEST['notes'], $_REQUEST['tasks'])) {
         $errors['err'] = __('Unable to export the ticket to ZIP.')
             .' '.__('Internal error occurred');
-    } elseif (PluginManager::auditPlugin() && $_REQUEST['a'] == 'export' && strtolower($_REQUEST['t']) == 'audits') {
+    } elseif (PluginManager::pluginExists('Help Desk Audit') && $_REQUEST['a'] == 'export' && strtolower($_REQUEST['t']) == 'audits') {
       require_once(sprintf('phar:///%s/plugins/audit.phar/class.audit.php', INCLUDE_DIR));
       $show = AuditEntry::$show_view_audits;
       $filename = sprintf('%s-audits-%s.csv',

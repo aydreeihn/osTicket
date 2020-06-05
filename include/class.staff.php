@@ -1211,6 +1211,7 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         $this->mobile = Format::phone($vars['mobile']);
         $this->notes = Format::sanitize($vars['notes']);
         $this->setBackend2fa($vars['backend2fa']);
+        Signal::send('agent.google2fa', $this, $vars);
 
         // Set staff password if exists
         if (!$vars['welcome_email'] && $vars['passwd1']) {
