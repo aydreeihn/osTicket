@@ -24,7 +24,7 @@ if($_POST) {
                 foreach ($_POST['ids'] as $id) {
                     if ($p = Plugin::lookup($id)) {
                         if (!$p->enable())
-                            $errors['err'] = sprintf(
+                            $errors['err'] = $p->errors ?: sprintf(
                                 __('Unable to enable %s'),
                                 $p->getName());
                     }
