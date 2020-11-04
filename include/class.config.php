@@ -245,6 +245,8 @@ class OsticketConfig extends Config {
         'agent_avatar' => 'gravatar.mm',
         'ticket_lock' => 2, // Lock on activity
         'max_open_tickets' => 0,
+        'max_ip_tickets' => 0,
+        'ip_banlist' => 0,
         'files_req_auth' => 1,
         'force_https' => '',
         'allow_external_images' => 1,
@@ -769,6 +771,14 @@ class OsticketConfig extends Config {
 
     function getMaxOpenTickets() {
          return $this->get('max_open_tickets');
+    }
+
+    function getMaxIPTickets() {
+         return $this->get('max_ip_tickets');
+    }
+
+    function getIPBanlistConfig() {
+         return $this->get('ip_banlist');
     }
 
     function getMaxFileSize() {
@@ -1400,6 +1410,7 @@ class OsticketConfig extends Config {
         $f['default_ticket_status_id'] = array('type'=>'int', 'required'=>1, 'error'=>__('Selection required'));
         $f['default_priority_id']=array('type'=>'int',   'required'=>1, 'error'=>__('Selection required'));
         $f['max_open_tickets']=array('type'=>'int',   'required'=>1, 'error'=>__('Enter valid numeric value'));
+        $f['max_ip_tickets']=array('type'=>'int',   'required'=>1, 'error'=>__('Enter valid numeric value'));
 
 
         if($vars['enable_captcha']) {
@@ -1438,6 +1449,16 @@ class OsticketConfig extends Config {
             }
         }
 
+        //create banlist/whitelist if they don't exist
+        if (($vars['max_ip_tickets'] && isset($vars['max_ip_tickets'])) ||
+            ($vars['ip_banlist'] && isset($vars['ip_banlist']))) {
+            require_once INCLUDE_DIR . 'class.banlist.php';
+            require_once INCLUDE_DIR . 'class.whitelist.php';
+
+            IPBanlist::getIPBanList();
+            IPWhitelist::getIPWhitelist();
+        }
+
         return $this->updateAll(array(
             'ticket_number_format'=>$vars['ticket_number_format'] ?: '######',
             'ticket_sequence_id'=>$vars['ticket_sequence_id'] ?: 0,
@@ -1447,6 +1468,8 @@ class OsticketConfig extends Config {
             'default_ticket_status_id'=>$vars['default_ticket_status_id'],
             'default_sla_id'=>$vars['default_sla_id'],
             'max_open_tickets'=>$vars['max_open_tickets'],
+            'max_ip_tickets'=>$vars['max_ip_tickets'],
+            'ip_banlist'=>$vars['ip_banlist'],
             'enable_captcha'=>isset($vars['enable_captcha'])?1:0,
             'auto_claim_tickets'=>isset($vars['auto_claim_tickets'])?1:0,
             'auto_refer_closed' => isset($vars['auto_refer_closed']) ? 1 : 0,

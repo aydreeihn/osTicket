@@ -188,12 +188,35 @@ if(!($maxfileuploads=ini_get('max_file_uploads')))
             </td>
         </tr>
         <tr>
-            <td><?php echo __('Maximum <b>Open</b> Tickets');?>:</td>
+            <td><?php echo __('Maximum <b>Open</b> Tickets - User');?>:</td>
             <td>
                 <input type="text" name="max_open_tickets" size=4 value="<?php echo $config['max_open_tickets']; ?>">
                 <?php echo __('per end user'); ?>
                 <span class="error">*&nbsp;<?php echo $errors['max_open_tickets']; ?></span>
                 <i class="help-tip icon-question-sign" href="#maximum_open_tickets"></i>
+            </td>
+        </tr>
+        <tr class="border">
+            <td>
+                <?php echo __('IP Banlist Configuration');?>:
+            </td>
+            <td>
+                <label>
+                <input type="radio" name="ip_banlist" value="1" <?php echo $config['ip_banlist']?'checked="checked"':''; ?>
+                    onchange="javascript:$('#maximum_ip_tickets').hide();"> <?php echo __('Ban All Blacklisted IPs'); ?>
+                </label>&nbsp;<label>
+                <input type="radio" name="ip_banlist" value="0" <?php echo !$config['ip_banlist']?'checked="checked"':''; ?>
+                    onchange="javascript:$('#maximum_ip_tickets').show();"> <?php echo __('Limit Tickets for IP'); ?>
+                </label>&nbsp; <i class="help-tip icon-question-sign" href="#ip_banlist"></i>
+            </td>
+        </tr>
+        <tr id="maximum_ip_tickets">
+            <td style="padding-left:20px"><?php echo __('Maximum <b>Open</b> Tickets - IP');?>:</td>
+            <td style="padding-left:20px">
+                <input type="text" name="max_ip_tickets" size=4 value="<?php echo $config['max_ip_tickets']; ?>">
+                <?php echo __('per IP'); ?>
+                <span class="error">*&nbsp;<?php echo $errors['max_ip_tickets']; ?></span>
+                <i class="help-tip icon-question-sign" href="#maximum_ip_tickets"></i>
             </td>
         </tr>
         <tr>
@@ -297,5 +320,10 @@ $(function() {
     };
     $('[name=ticket_sequence_id]').on('change', update_example);
     $('[name=ticket_number_format]').on('keyup', update_example);
+
+    if ($('input[name=ip_banlist]:checked').val() == 1)
+        $('#maximum_ip_tickets').hide();
+    else
+        $('#maximum_ip_tickets').show();
 });
 </script>

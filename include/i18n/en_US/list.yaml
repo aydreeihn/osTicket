@@ -53,3 +53,27 @@
             length: 100
   configuration:
     handler: TicketStatusList
+# Banned IPs
+- type: ip-banlist #notrans
+  name: IP Banlist
+  name_plural: Banned IPs
+  sort_mode: SortCol  # notrans
+  masks: 13
+  notes: |
+    Banned IPs
+  properties:
+    title: IP Banlist Properties
+    instructions: Properties that can be set on each banned IP
+    flags: 0
+# Whitelisted IPs
+- type: ip-whitelist #notrans
+  name: IP Whitelist
+  name_plural: Whitelisted IPs
+  sort_mode: SortCol  # notrans
+  masks: 13
+  notes: |
+    Whitelisted IPs
+  properties:
+    title: IP Whitelist Properties
+    instructions: Properties that can be set on each whitelisted IP
+    flags: 0

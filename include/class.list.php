@@ -38,7 +38,7 @@ interface CustomList {
 
     function getItem($id);
     function addItem($vars, &$errors);
-    function isItemUnique($vars);
+    function isItemUnique($vars, &$errors);
 
     function getForm(); // Config form
     function hasProperties();
@@ -177,6 +177,10 @@ class DynamicList extends VerySimpleModel implements CustomList {
         return $this->ht;
     }
 
+    static function getByType($type) {
+        return static::lookup(['type' => $type]);
+    }
+
     function hasProperties() {
         return ($this->getForm() && $this->getForm()->getFields());
     }
@@ -191,6 +195,10 @@ class DynamicList extends VerySimpleModel implements CustomList {
 
     function getSortMode() {
         return $this->sort_mode;
+    }
+
+    function getType() {
+        return $this->type;
     }
 
     function getListOrderBy() {
@@ -282,7 +290,12 @@ class DynamicList extends VerySimpleModel implements CustomList {
         return $item;
     }
 
-    function isItemUnique($data) {
+    function isItemUnique($data, &$errors) {
+        if ($this->getType() == 'ip-banlist')
+            return IPBanlist::isItemUnique($data, $errors);
+        elseif($this->getType() == 'ip-whitelist')
+            return IPWhitelist::isItemUnique($data, $errors);
+
         try {
             $this->getItems()->filter(array('value'=>$data['value']))->one();
             return false;
@@ -290,6 +303,13 @@ class DynamicList extends VerySimpleModel implements CustomList {
         catch (DoesNotExist $e) {
             return true;
         }
+    }
+
+    function isItemValid($data, &$errors) {
+        if ($this->getType() == 'ip-banlist')
+            return IPBanlist::isItemValid($data, $errors);
+        elseif($this->getType() == 'ip-whitelist')
+            return IPWhitelist::isItemValid($data, $errors);
     }
 
     function getConfigurationForm($autocreate=false) {
@@ -622,6 +642,8 @@ FormField::addFieldTypes(/* @trans */ 'Custom Lists', array('DynamicList', 'getS
  * sort - (int) If sorting by this field, represents the numeric sort order
  *      that this item should come in the dropdown list
  */
+ include_once(INCLUDE_DIR.'class.banlist.php');
+
 class DynamicListItem extends VerySimpleModel implements CustomListItem {
 
     static $meta = array(
@@ -830,6 +852,16 @@ class DynamicListItem extends VerySimpleModel implements CustomListItem {
     }
 
     function delete() {
+        //see if item is in IP Banlist
+        $list = DynamicList::getByType('ip-banlist');
+        if ($list && ($this->getListId() == $list->getId()))
+            return IPBanlist::remove($this->getvalue());
+
+        //see if item is in IP Whitelist
+        $list = DynamicList::getByType('ip-whitelist');
+        if ($list && ($this->getListId() == $list->getId()))
+            return parent::delete();
+
         # Don't really delete, just unset the list_id to un-associate it with
         # the list
         $this->set('list_id', null);
@@ -951,7 +983,7 @@ class TicketStatusList extends CustomListHandler {
         return $item;
     }
 
-    function isItemUnique($data) {
+    function isItemUnique($data, &$errors) {
         try {
             $this->getItems()->filter(array('name'=>$data['name']))->one();
             return false;

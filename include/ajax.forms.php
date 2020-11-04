@@ -262,7 +262,11 @@ class DynamicFormsAjaxAPI extends AjaxController {
 
         if ($_POST && ($valid = $item_form->isValid())) {
             $data = $item_form->getClean();
-            if ($list->isItemUnique($data)) {
+            if (!$list->isItemUnique($data, $errors) || !$list->isItemValid($data, $errors)) {
+                $item_form->getField('value')->addError(
+                    $errors['error'] ?: __('Value already in use'));
+            }
+            else {
                 $item = $list->addItem($data, $errors);
                 if ($item->setConfiguration($_POST, $errors)) {
                     Http::response(201, $this->encode(array(
@@ -270,10 +274,6 @@ class DynamicFormsAjaxAPI extends AjaxController {
                         'row' => $this->_renderListItem($item, $list)
                     )));
                 }
-            }
-            else {
-                $item_form->getField('value')->addError(
-                    __('Value already in use'));
             }
         }
 

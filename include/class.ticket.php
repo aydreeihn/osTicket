@@ -25,6 +25,7 @@ include_once(INCLUDE_DIR.'class.file.php');
 include_once(INCLUDE_DIR.'class.export.php');
 include_once(INCLUDE_DIR.'class.attachment.php');
 include_once(INCLUDE_DIR.'class.banlist.php');
+include_once(INCLUDE_DIR.'class.whitelist.php');
 include_once(INCLUDE_DIR.'class.template.php');
 include_once(INCLUDE_DIR.'class.variable.php');
 include_once(INCLUDE_DIR.'class.priority.php');
@@ -872,6 +873,37 @@ implements RestrictedAccess, Threadable, Searchable {
                 $this->last_message = $this->getThread() ? $this->getThread()->getLastMessage() : '';
         }
         return $this->last_message;
+    }
+
+    function getIPStats($ipaddress=false) {
+        if ($ipaddress)
+            return $count = Ticket::objects()
+                ->annotate(array('count' => SqlAggregate::COUNT('ticket_id')))
+                ->values('status__state')
+                ->distinct('status_id')
+                ->filter(array(
+                    'ip_address' => $ipaddress,
+                ));
+    }
+
+    function getNumIPTickets($state=false, $ipaddress) {
+        $stats = self::getIPStats($ipaddress);
+        $count = 0;
+
+        foreach ($stats as $row) {
+            if ($state && $row['status__state'] != $state)
+                continue;
+            $count += $row['count'];
+        }
+        return $count;
+    }
+
+    function getNumOpenIPTickets($ipaddress) {
+        return self::getNumIPTickets('open', $ipaddress) ?: 0;
+    }
+
+    function getNumClosedIPTickets($ipaddress) {
+        return self::getNumIPTickets('closed', $ipaddress) ?: 0;
     }
 
     function getNumTasks() {
@@ -1774,6 +1806,35 @@ implements RestrictedAccess, Threadable, Searchable {
 
         $ost->alertAdmin(__('Overlimit Notice'), $alert);
 
+        return true;
+    }
+
+    function onIPOpenLimit($ipaddress) {
+        global $ost, $cfg;
+
+        //Add IP to banlist if not in whitelist
+        $whitelist = IPWhitelist::getIPWhitelist();
+        if (!($whitelist->getItem($ipaddress)))
+            IPBanlist::add($ipaddress);
+        else
+            return false;
+
+        if (self::getNumOpenIPTickets($ipaddress)==$cfg->getMaxIPTickets()) {
+            //Log the limit notice as a warning for admin.
+            $msg=sprintf(_S('Maximum open tickets (%1$d) reached for %2$s'),
+                $cfg->getMaxIPTickets(), $ipaddress);
+            $ost->logWarning(sprintf(_S('Maximum Open Tickets Limit (%s)'),$ipaddress),
+                $msg, false);
+
+            // Alert admin...this might be spammy (no option to disable)...but it is helpful..I think.
+            $alert=sprintf(__('Maximum open tickets reached for %s.'), $ipaddress)."\n"
+                  .sprintf(__('Open tickets: %d'), self::getNumOpenIPTickets($ipaddress))."\n"
+                  .sprintf(__('Max allowed: %d'), $cfg->getMaxIPTickets())
+                  ."\n\n".__("Note: IP added to blacklist. If you do not want this IP to be blacklisted, you can remove it from: ")
+                  ."\n\n".__('Admin Panel | Manage | Lists | IP Banlist');
+
+            $ost->alertAdmin(__('IP Overlimit Notice'), $alert);
+        }
         return true;
     }
 
@@ -4149,6 +4210,21 @@ implements RestrictedAccess, Threadable, Searchable {
                 return 0;
             }
 
+            //see  if ticket/user should be rejected based on IP
+            $ipaddress = $vars['ip'] ?: $_SERVER['REMOTE_ADDR'];
+            if (!$thisstaff && $ipaddress) {
+                $banlist = IPBanlist::getIPBanList();
+                if (($cfg->getIPBanlistConfig() == 1 && $banlist->getItem($ipaddress)) || //ban all on blacklist
+                    ($cfg->getIPBanlistConfig() == 0 && $cfg->getMaxIPTickets()>0 && //ban if limit hit on blacklist
+                    (self::getNumOpenIPTickets($ipaddress)>=$cfg->getMaxIPTickets()))
+                ) {
+                    if (self::onIPOpenLimit($ipaddress)) { //logs, notices, add to list if need to
+                        $errors = array('err' => __("You've reached the maximum open tickets allowed."));
+                        return 0;
+                    }
+                }
+            }
+
             // Allow vars to be changed in ticket filter and applied to the user
             // account created or detected
             if (!$user && $vars['email'])
@@ -4294,7 +4370,6 @@ implements RestrictedAccess, Threadable, Searchable {
         $deptId = $deptId ?: $cfg->getDefaultDeptId();
         $statusId = $statusId ?: $cfg->getDefaultTicketStatusId();
         $topicId = isset($topic) ? $topic->getId() : 0;
-        $ipaddress = $vars['ip'] ?: $_SERVER['REMOTE_ADDR'];
         $source = $source ?: 'Web';
 
         //We are ready son...hold on to the rails.

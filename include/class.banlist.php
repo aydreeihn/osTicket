@@ -88,3 +88,81 @@ class Banlist {
         return self::getSystemBanList();
     }
 }
+
+require_once "class.list.php";
+require_once "class.whitelist.php";
+class IPBanlist {
+
+    function add($ipaddress) {
+        $errors = array();
+        $vars = array('sort'  => 1,
+            'value' => $ipaddress,
+            'extra' => '');
+        $item = self::getIPBanList()->addItem($vars, $errors);
+
+        return $item->save();
+    }
+
+    //When an IP is removed from the banlist, add it to the whitelist
+    function remove($ipaddress) {
+        $list = self::getIPBanList();
+        $listItem = $list->getItem($ipaddress);
+        $whitelist = IPWhitelist::getIPWhitelist();
+        $listItem->set('list_id', $whitelist->id);
+
+        return $listItem->save();
+    }
+
+    function isItemUnique($data, &$errors) {
+        //see if item is in IP Whitelist
+        $whitelist = IPWhitelist::getIPWhitelist();
+        if (($whitelist->getItem($data['value']))) {
+            $errors['error'] = __('Value already in use in banlist');
+            return false;
+        }
+
+        try {
+            $list=self::getIPBanList();
+            $list->getItems()->filter(array('value'=>$data['value']))->one();
+            return false;
+        }
+        catch (DoesNotExist $e) {
+            return true;
+        }
+    }
+
+    function isItemValid($data, &$errors) {
+        if (!$data['value'] || !Validator::is_ip($data['value'])) {
+            $errors['error'] = __('Valid IP is required');
+
+            return false;
+        }
+        return true;
+    }
+
+    function ensureIPBanList() {
+        if (!($list=DynamicList::getByType('ip-banlist'))) {
+            $list=self::createIPBanList();
+            $list->save();
+        }
+
+        return $list;
+    }
+
+    function createIPBanList() {
+        # XXX: DynamicList::create should return the ID!!!
+        $errors=array();
+        return DynamicList::create(array(
+            'name'          => 'IP Banlist',
+            'name_plural'   => 'Banned IPs',
+            'sort_mode'     => 'SortCol',
+            'masks'         => 13,
+            'type'          => 'ip-banlist',
+            'notes'         => __('Banned IPs')
+        ), $errors);
+    }
+
+    function getIPBanList() {
+        return self::ensureIPBanList();
+    }
+}

@@ -67,12 +67,43 @@ default_priority:
         ticket filter settings.
 
 maximum_open_tickets:
-    title: Maximum Open Tickets
+    title: Maximum Open Tickets - User
     content: >
         Enter the maximum <em>number</em> of tickets a User is permitted to
         have <strong>open</strong> in your help desk.
         <br><br>
         Enter <span class="doc-desc-opt">0 </span> if you prefer to disable this limitation.
+
+maximum_ip_tickets:
+    title: Maximum Open Tickets - IP
+    content: >
+        Enter the maximum <em>number</em> of tickets an IP is permitted to
+        have <strong>open</strong> in your help desk.
+        <br><br>
+        This setting is helpful to prevent attempts to spam your helpdesk
+        with Tickets from multiple User accounts using the same IP.
+        <br><br>
+        Enter <span class="doc-desc-opt">0 </span> if you prefer to disable this limitation.
+
+ip_banlist:
+    title: IP Banlist Configuration
+    content: >
+        <strong>Ban All Blacklisted IPs</strong> Choose this option if you want to reject <strong>all</strong>
+        helpdesk activities for IPs that are in the IP blacklist. This will reject IPs from creating Tickets
+        and Users in your helpdesk. IPs must be manually added to the blacklist for this option.
+        <br><br>
+        <strong>Limit Tickets for IP</strong> Choose this option if you want to limit the amount of Tickets
+        that can be <strong>open</strong> for IPs in your helpdesk. If this limit is reached,
+        your helpdesk will blacklist the IP and reject blacklisted IPs from creating Tickets or Users in your helpdesk.
+        <br><br>
+        Enter <span class="doc-desc-opt">0 </span> if you prefer to disable this limitation.
+        <br><br>
+        <strong>Note:</strong> IPs deleted from the banlist are automatically added to the whitelist.
+    links:
+      - title: Manage IP Whitelist
+        href: /scp/lists.php?type=ip-whitelist
+      - title: Manage IP Banlist
+        href: /scp/lists.php?type=ip-banlist
 
 email_ticket_priority:
     title: Email Ticket Priority
